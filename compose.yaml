@@ -1,0 +1,68 @@
+# Clúster de Cassandra de 3 nodos + contenedor de aplicación (perfil "app").
+# Todo comparte la red "parque" para que el driver vea las IP internas de los nodos.
+
+x-cassandra: &cassandra
+  image: cassandra:4.1
+  restart: unless-stopped
+  networks: [parque]
+  environment: &cassandra-env
+    CLUSTER_NAME: parque-eolico
+    CASSANDRA_SEEDS: cass1
+    CASSANDRA_DC: dc1
+    CASSANDRA_RACK: rack1
+    CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+    MAX_HEAP_SIZE: 512M
+    HEAP_NEWSIZE: 128M
+  healthcheck:
+    test: ["CMD-SHELL", "nodetool statusgossip | grep -q running && cqlsh -e 'DESCRIBE KEYSPACES' >/dev/null 2>&1"]
+    interval: 15s
+    timeout: 10s
+    retries: 20
+    start_period: 60s
+
+services:
+  cass1:  # nodo semilla
+    <<: *cassandra
+    container_name: cass1
+    volumes:
+      - cass1_data:/var/lib/cassandra
+
+  cass2:
+    <<: *cassandra
+    container_name: cass2
+    depends_on:
+      cass1: { condition: service_healthy }
+    volumes:
+      - cass2_data:/var/lib/cassandra
+
+  cass3:
+    <<: *cassandra
+    container_name: cass3
+    depends_on:
+      cass2: { condition: service_healthy }
+    volumes:
+      - cass3_data:/var/lib/cassandra
+
+  # Contenedor desde el que se ejecutan los scripts de Python.
+  # No arranca con "docker compose up": hay que activar el perfil "app".
+  app:
+    profiles: [app]
+    build: .
+    container_name: app
+    networks: [parque]
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      CASSANDRA_HOSTS: cass1,cass2,cass3
+    depends_on:
+      cass3: { condition: service_healthy }
+    command: sleep infinity
+
+networks:
+  parque:
+
+volumes:
+  cass1_data:
+  cass2_data:
+  cass3_data:
