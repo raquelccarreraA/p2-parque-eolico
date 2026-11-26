@@ -1,39 +1,138 @@
 import argparse
+from datetime import date
+from decimal import Decimal
 from conexiones import conectar_cassandra
 
 
 def leer_argumentos():
-    # Preparamos los parametros para consultar un aerogenerador y un dia concretos
-    parser = argparse.ArgumentParser(
-        description="Ejecuta las cuatro consultas del parque eolico en Cassandra."
+    # Preparamos los parametros que recibe el script por consola
+    analizador = argparse.ArgumentParser(
+        description="Ejecuta las 4 consultas del parque eolico en Cassandra."
     )
-    parser.add_argument(
+    analizador.add_argument(
         "--aeroxerador",
         default="MB-01",
-        help="Identificador del aerogenerador (ejemplo: MB-01).",
+        help="Identificador del aerogenerador (por defecto: MB-01).",
     )
-    parser.add_argument(
+    analizador.add_argument(
         "--dia",
         required=True,
         help="Dia a consultar en formato AAAA-MM-DD.",
     )
-    return parser.parse_args()
+    analizador.add_argument(
+        "--limite",
+        type=int,
+        default=None,
+        help="Numero maximo de lecturas a mostrar en la consulta 1 (por defecto muestra todas).",
+    )
+    return analizador.parse_args()
 
 
-def main():
-    argumentos = leer_argumentos()
-    cluster, sesion = conectar_cassandra()
+def consultar_lecturas_dia(sesion, aeroxerador_id, dia, limite):
+    print(f"\n=== 1. Lecturas de {aeroxerador_id} el {dia} (mas recientes primero) ===")
 
-    try:
+    # Si el usuario pasa un limite, lo aplicamos directamente en la consulta
+    if limite is not None:
+        consulta = """
+            SELECT data_hora, vento_ms, direccion_graos, potencia_kw,
+                   rotor_rpm, temp_xerador_c, estado
+            FROM lecturas_por_aeroxerador_dia
+            WHERE aeroxerador_id = %s AND dia = %s
+            LIMIT %s
+        """
+        filas = list(sesion.execute(consulta, (aeroxerador_id, dia, limite)))
+    else:
+        consulta = """
+            SELECT data_hora, vento_ms, direccion_graos, potencia_kw,
+                   rotor_rpm, temp_xerador_c, estado
+            FROM lecturas_por_aeroxerador_dia
+            WHERE aeroxerador_id = %s AND dia = %s
+        """
+        filas = list(sesion.execute(consulta, (aeroxerador_id, dia)))
+
+    print(f"Total filas mostradas: {len(filas)}")
+    for fila in filas:
         print(
-            f"Conectado a Cassandra. Consultas pendientes para "
-            f"{argumentos.aeroxerador} en el dia {argumentos.dia}."
+            f"  {fila.data_hora} | viento={fila.vento_ms} m/s | dir={fila.direccion_graos} | "
+            f"pot={fila.potencia_kw} kW | rpm={fila.rotor_rpm} | "
+            f"temp={fila.temp_xerador_c} C | estado={fila.estado}"
         )
-        # Aqui iran las 4 consultas cuando este listo el esquema de tablas
+
+
+def consultar_energia_dia(sesion, aeroxerador_id, dia):
+    print(f"\n=== 2. Energia producida por {aeroxerador_id} el {dia} ===")
+
+    # Cassandra suma todas las potencias de esa particion directamente
+    consulta = """
+        SELECT SUM(potencia_kw) AS suma_potencia
+        FROM energia_por_aeroxerador_dia
+        WHERE aeroxerador_id = %s AND dia = %s
+    """
+    fila = sesion.execute(consulta, (aeroxerador_id, dia)).one()
+
+    # Si no hay lecturas para ese dia, la suma viene como None y ponemos 0
+    suma_potencia = fila.suma_potencia if fila and fila.suma_potencia is not None else Decimal("0")
+
+    # Cada lectura son 10 minutos (10/60 de hora), asi pasamos de kW a kWh
+    energia_kwh = suma_potencia * Decimal(10) / Decimal(60)
+    print(f"  Suma de potencias: {suma_potencia:.1f} kW")
+    print(f"  Energia total:     {energia_kwh:.2f} kWh")
+
+
+def consultar_alarmas_parque(sesion, parque_id, dia):
+    print(f"\n=== 3. Alarmas del parque {parque_id} el {dia} (orden horario) ===")
+
+    consulta = """
+        SELECT data_hora, aeroxerador_id, vento_ms, potencia_kw, temp_xerador_c
+        FROM alarmas_por_parque_dia
+        WHERE parque_id = %s AND dia = %s
+    """
+    filas = list(sesion.execute(consulta, (parque_id, dia)))
+
+    print(f"Total alarmas: {len(filas)}")
+    for fila in filas:
+        print(
+            f"  {fila.data_hora} | {fila.aeroxerador_id} | viento={fila.vento_ms} m/s | "
+            f"pot={fila.potencia_kw} kW | temp={fila.temp_xerador_c} C"
+        )
+
+
+def consultar_ultima_lectura(sesion, parque_id):
+    print(f"\n=== 4. Ultima lectura de cada aerogenerador del parque {parque_id} ===")
+
+    consulta = """
+        SELECT aeroxerador_id, data_hora, vento_ms, potencia_kw, temp_xerador_c, estado
+        FROM ultima_lectura_por_parque
+        WHERE parque_id = %s
+    """
+    filas = list(sesion.execute(consulta, (parque_id,)))
+
+    print(f"Total aerogeneradores: {len(filas)}")
+    for fila in filas:
+        print(
+            f"  {fila.aeroxerador_id} | {fila.data_hora} | viento={fila.vento_ms} m/s | "
+            f"pot={fila.potencia_kw} kW | temp={fila.temp_xerador_c} C | estado={fila.estado}"
+        )
+
+
+def iniciar():
+    argumentos = leer_argumentos()
+
+    # Validamos que la fecha tenga formato AAAA-MM-DD
+    dia_consulta = date.fromisoformat(argumentos.dia)
+    # Sacamos el identificador del parque a partir del aerogenerador (MB-01 -> MB)
+    parque_id = argumentos.aeroxerador.split("-")[0]
+
+    cluster, sesion = conectar_cassandra()
+    try:
+        consultar_lecturas_dia(sesion, argumentos.aeroxerador, dia_consulta, argumentos.limite)
+        consultar_energia_dia(sesion, argumentos.aeroxerador, dia_consulta)
+        consultar_alarmas_parque(sesion, parque_id, dia_consulta)
+        consultar_ultima_lectura(sesion, parque_id)
     finally:
         # Cerramos siempre la conexion al terminar
         cluster.shutdown()
 
 
 if __name__ == "__main__":
-    main()
+    iniciar()
