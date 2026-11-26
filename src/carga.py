@@ -5,6 +5,12 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from cassandra.concurrent import execute_concurrent_with_args
 from conexiones import conectar_cassandra
+from sentencias_cql import (
+    INSERTAR_ALARMA,
+    INSERTAR_ENERGIA,
+    INSERTAR_LECTURA,
+    INSERTAR_ULTIMA_LECTURA,
+)
 
 
 def leer_argumentos():
@@ -105,14 +111,14 @@ def leer_datos_desde_csv(ruta_archivo):
     return datos_lecturas, datos_energia, datos_alarmas, datos_ultima_lectura
 
 
-def insertar_en_paralelo(sesion, consulta_cql, lista_datos, nombre_tabla):
+def insertar_en_paralelo(sesion, sentencia_cql, lista_datos, nombre_tabla):
     # Si no hay filas para esa tabla (por ejemplo, un dia sin alarmas), no hacemos nada
     if not lista_datos:
         print(f"Tabla {nombre_tabla}: 0 filas para insertar.")
         return
 
     # Preparamos la sentencia una sola vez para que Cassandra no la analice miles de veces
-    sentencia_preparada = sesion.prepare(consulta_cql)
+    sentencia_preparada = sesion.prepare(sentencia_cql)
 
     # Enviamos las inserciones en paralelo de 50 en 50 para ir rapido sin saturar Docker
     resultados = execute_concurrent_with_args(
@@ -146,45 +152,17 @@ def iniciar():
 
     cluster, sesion = conectar_cassandra()
     try:
-        consulta_lecturas = """
-            INSERT INTO lecturas_por_aeroxerador_dia (
-                aeroxerador_id, dia, data_hora, vento_ms, direccion_graos,
-                potencia_kw, rotor_rpm, temp_xerador_c, estado
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-
-        consulta_energia = """
-            INSERT INTO energia_por_aeroxerador_dia (
-                aeroxerador_id, dia, data_hora, potencia_kw
-            ) VALUES (?, ?, ?, ?)
-        """
-
-        consulta_alarmas = """
-            INSERT INTO alarmas_por_parque_dia (
-                parque_id, dia, data_hora, aeroxerador_id, vento_ms,
-                direccion_graos, potencia_kw, rotor_rpm, temp_xerador_c, estado
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-
-        consulta_ultima_lectura = """
-            INSERT INTO ultima_lectura_por_parque (
-                parque_id, aeroxerador_id, data_hora, vento_ms, direccion_graos,
-                potencia_kw, rotor_rpm, temp_xerador_c, estado
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            USING TIMESTAMP ?
-        """
-
         insertar_en_paralelo(
-            sesion, consulta_lecturas, datos_lecturas, "lecturas_por_aeroxerador_dia"
+            sesion, INSERTAR_LECTURA, datos_lecturas, "lecturas_por_aeroxerador_dia"
         )
         insertar_en_paralelo(
-            sesion, consulta_energia, datos_energia, "energia_por_aeroxerador_dia"
+            sesion, INSERTAR_ENERGIA, datos_energia, "energia_por_aeroxerador_dia"
         )
         insertar_en_paralelo(
-            sesion, consulta_alarmas, datos_alarmas, "alarmas_por_parque_dia"
+            sesion, INSERTAR_ALARMA, datos_alarmas, "alarmas_por_parque_dia"
         )
         insertar_en_paralelo(
-            sesion, consulta_ultima_lectura, datos_ultima_lectura, "ultima_lectura_por_parque"
+            sesion, INSERTAR_ULTIMA_LECTURA, datos_ultima_lectura, "ultima_lectura_por_parque"
         )
 
         tiempo_total = time.perf_counter() - tiempo_inicio

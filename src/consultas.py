@@ -2,6 +2,13 @@ import argparse
 from datetime import date
 from decimal import Decimal
 from conexiones import conectar_cassandra
+from sentencias_cql import (
+    CONSULTAR_ALARMAS_PARQUE,
+    CONSULTAR_ENERGIA_DIA,
+    CONSULTAR_LECTURAS_DIA,
+    CONSULTAR_LECTURAS_DIA_CON_LIMITE,
+    CONSULTAR_ULTIMA_LECTURA,
+)
 
 
 def leer_argumentos():
@@ -31,24 +38,15 @@ def leer_argumentos():
 def consultar_lecturas_dia(sesion, aeroxerador_id, dia, limite):
     print(f"\n=== 1. Lecturas de {aeroxerador_id} el {dia} (mas recientes primero) ===")
 
-    # Si el usuario pasa un limite, lo aplicamos directamente en la consulta
+    # Si el usuario pasa un limite, usamos la consulta con LIMIT
     if limite is not None:
-        consulta = """
-            SELECT data_hora, vento_ms, direccion_graos, potencia_kw,
-                   rotor_rpm, temp_xerador_c, estado
-            FROM lecturas_por_aeroxerador_dia
-            WHERE aeroxerador_id = %s AND dia = %s
-            LIMIT %s
-        """
-        filas = list(sesion.execute(consulta, (aeroxerador_id, dia, limite)))
+        filas = list(
+            sesion.execute(CONSULTAR_LECTURAS_DIA_CON_LIMITE, (aeroxerador_id, dia, limite))
+        )
     else:
-        consulta = """
-            SELECT data_hora, vento_ms, direccion_graos, potencia_kw,
-                   rotor_rpm, temp_xerador_c, estado
-            FROM lecturas_por_aeroxerador_dia
-            WHERE aeroxerador_id = %s AND dia = %s
-        """
-        filas = list(sesion.execute(consulta, (aeroxerador_id, dia)))
+        filas = list(
+            sesion.execute(CONSULTAR_LECTURAS_DIA, (aeroxerador_id, dia))
+        )
 
     print(f"Total filas mostradas: {len(filas)}")
     for fila in filas:
@@ -63,12 +61,7 @@ def consultar_energia_dia(sesion, aeroxerador_id, dia):
     print(f"\n=== 2. Energia producida por {aeroxerador_id} el {dia} ===")
 
     # Cassandra suma todas las potencias de esa particion directamente
-    consulta = """
-        SELECT SUM(potencia_kw) AS suma_potencia
-        FROM energia_por_aeroxerador_dia
-        WHERE aeroxerador_id = %s AND dia = %s
-    """
-    fila = sesion.execute(consulta, (aeroxerador_id, dia)).one()
+    fila = sesion.execute(CONSULTAR_ENERGIA_DIA, (aeroxerador_id, dia)).one()
 
     # Si no hay lecturas para ese dia, la suma viene como None y ponemos 0
     suma_potencia = fila.suma_potencia if fila and fila.suma_potencia is not None else Decimal("0")
@@ -82,12 +75,7 @@ def consultar_energia_dia(sesion, aeroxerador_id, dia):
 def consultar_alarmas_parque(sesion, parque_id, dia):
     print(f"\n=== 3. Alarmas del parque {parque_id} el {dia} (orden horario) ===")
 
-    consulta = """
-        SELECT data_hora, aeroxerador_id, vento_ms, potencia_kw, temp_xerador_c
-        FROM alarmas_por_parque_dia
-        WHERE parque_id = %s AND dia = %s
-    """
-    filas = list(sesion.execute(consulta, (parque_id, dia)))
+    filas = list(sesion.execute(CONSULTAR_ALARMAS_PARQUE, (parque_id, dia)))
 
     print(f"Total alarmas: {len(filas)}")
     for fila in filas:
@@ -100,12 +88,7 @@ def consultar_alarmas_parque(sesion, parque_id, dia):
 def consultar_ultima_lectura(sesion, parque_id):
     print(f"\n=== 4. Ultima lectura de cada aerogenerador del parque {parque_id} ===")
 
-    consulta = """
-        SELECT aeroxerador_id, data_hora, vento_ms, potencia_kw, temp_xerador_c, estado
-        FROM ultima_lectura_por_parque
-        WHERE parque_id = %s
-    """
-    filas = list(sesion.execute(consulta, (parque_id,)))
+    filas = list(sesion.execute(CONSULTAR_ULTIMA_LECTURA, (parque_id,)))
 
     print(f"Total aerogeneradores: {len(filas)}")
     for fila in filas:
