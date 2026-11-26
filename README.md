@@ -47,6 +47,31 @@ docker compose exec app bash        # shell interactivo
 
 Dentro del contenedor, los nodos son accesibles como `cass1`, `cass2` y `cass3` (también en la variable `CASSANDRA_HOSTS`).
 
+### 4. Generador de lecturas (`src/xera_lecturas.py`)        
+
+Como no tenemos acceso al SCADA, las lecturas se generan con un script que cumple siempre el contrato de datos (apartado 2).
+
+```bash
+python3 src/xera_lecturas.py --dias 7 --inicio 2026-11-01 --semilla 42 --salida lecturas.csv
+```
+
+| Parámetro | Por defecto | Para qué |
+|---|---|---|
+| `--dias` | 7 | número de días (mínimo 7) |
+| `--inicio` | 2026-11-01 | primer día |
+| `--semilla` | 42 | misma semilla = mismos datos |
+| `--salida` | lecturas.csv | fichero CSV |
+
+Con 7 días salen 12 × 144 × 7 = **12.096 lecturas**. El CSV no se sube al repo: se puede volver a generar con la semilla.
+
+Cómo cumple las reglas:
+- **Regla 1:** una lectura cada 10 minutos para cada aerogenerador, 144 al día, sin huecos ni repeticiones.
+- **Regla 2:** potencia 0 con viento < 3 o > 25 m/s; sube entre 3 y 12; unos 3.000 kW entre 12 y 25.
+- **Regla 3:** `parado` con 0 kW y 0 rpm; `alarma` en un 1 % de las lecturas (temperatura alta); `ok` el resto.
+- **Regla 4:** hay un viento general del parque que cambia poco cada 10 minutos, y cada aerogenerador tiene un viento parecido a él.
+
+Antes de guardar, el script **comprueba el contrato** (rangos, 144 lecturas por aerogenerador y día, sin duplicados, parados con 0 kW y 0 rpm). Si algo falla, no guarda nada y muestra el error.
+
 ## Modelo de datos (4.1)
 
 Esquema completo en [`cql/02_tablas.cql`](cql/02_tablas.cql). Se crea después del keyspace:
