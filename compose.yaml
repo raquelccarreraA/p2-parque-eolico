@@ -43,6 +43,15 @@ services:
     volumes:
       - cass3_data:/var/lib/cassandra
 
+  # Cuarto nodo para la fase de crecimiento (4.4). No arranca con "docker compose up":
+  # se añade con el clúster en marcha usando el perfil "ampliar".
+  cass4:
+    <<: *cassandra
+    profiles: [ampliar]
+    container_name: cass4
+    volumes:
+      - cass4_data:/var/lib/cassandra
+
   # Contenedor desde el que se ejecutan los scripts de Python.
   # No arranca con "docker compose up": hay que activar el perfil "app".
   app:
@@ -66,3 +75,4 @@ volumes:
   cass1_data:
   cass2_data:
   cass3_data:
+  cass4_data:

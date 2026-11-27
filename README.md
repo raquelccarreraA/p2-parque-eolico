@@ -383,3 +383,90 @@ Los hints solo se guardan durante **3 horas** (`max_hint_window`). Si un nodo es
 
 
 ## Crecimiento del clúster (4.4)
+
+
+Se añade un cuarto nodo (`cass4`) con el clúster funcionando, **sin cargar más datos** a partir de aquí. `cass4` está en el perfil `ampliar` de `compose.yaml`, así que `docker compose up -d` normal no lo arranca.
+
+### 1. Consultas antes de crecer
+
+Con los 3 nodos en marcha y todo cargado (incluido el día de la prueba de nodo caído), se ejecutan las consultas y se guarda la salida. Los parámetros deben ser los mismos antes y después:
+
+```bash
+for n in cass1 cass2 cass3; do docker exec $n nodetool flush parque; done   # pasa la memoria a disco para que el Load sea real
+docker exec cass3 nodetool status parque
+docker exec app python src/consultas.py --aeroxerador MB-01 --dia 2026-11-08 > consultas_antes.txt
+```
+
+`nodetool status parque` (con el nombre del keyspace) hace que *Owns* tenga en cuenta el factor de replicación 3.
+
+```
+Datacenter: dc1
+--  Address     Load        Tokens  Owns (effective)  Host ID       Rack
+UN  172.18.0.4  662.71 KiB  16      100.0%            4cf0d8b5-...  rack1
+UN  172.18.0.3  662.69 KiB  16      100.0%            be36c737-...  rack1
+UN  172.18.0.2  650.41 KiB  16      100.0%            32acca16-...  rack1
+```
+
+### 2. Añadir `cass4` sin parar el clúster
+
+```bash
+docker compose --profile ampliar up -d cass4     # no toca cass1-3 (ya están en marcha)
+docker exec cass1 nodetool status parque          # repetir hasta que cass4 pase de UJ (Joining) a UN
+```
+
+`cass4` arranca con `CASSANDRA_SEEDS=cass1`, contacta con el clúster, recibe un rango de tokens y los demás nodos le *transmiten* (streaming) los datos que ahora le corresponden. Durante ese tiempo aparece como `UJ` (Up/Joining).
+
+```
+Datacenter: dc1
+--  Address     Load        Tokens  Owns (effective)  Host ID       Rack
+UN  172.18.0.4  662.71 KiB  16      77.4%             4cf0d8b5-...  rack1
+UN  172.18.0.6  548.34 KiB  16      73.2%             b2f1fefc-...  rack1   = cass4
+UN  172.18.0.3  662.69 KiB  16      74.7%             be36c737-...  rack1
+UN  172.18.0.2  650.41 KiB  16      74.7%             32acca16-...  rack1
+
+(Load de los nodos antiguos sin cambios: todavía no se ha hecho el cleanup.)
+```
+
+### 3. `nodetool cleanup` en los nodos antiguos
+
+```bash
+docker exec cass1 nodetool cleanup parque
+docker exec cass2 nodetool cleanup parque
+docker exec cass3 nodetool cleanup parque
+docker exec cass1 nodetool status parque
+```
+
+**Qué hace `cleanup`:** al entrar `cass4`, los nodos antiguos dejan de ser réplica de parte de sus rangos de tokens, pero **siguen guardando esos datos** en disco (Cassandra no los borra automáticamente al hacer streaming). `nodetool cleanup` reescribe los SSTables y elimina las particiones que el nodo ya no posee, liberando espacio. No cambia lo que devuelven las consultas, solo el *Load* de los nodos antiguos. Hay que ejecutarlo en cada nodo antiguo, y no en `cass4`.
+
+```
+Datacenter: dc1
+--  Address     Load        Tokens  Owns (effective)  Host ID       Rack
+UN  172.18.0.4  532.92 KiB  16      77.4%             4cf0d8b5-...  rack1
+UN  172.18.0.6  514.33 KiB  16      73.2%             b2f1fefc-...  rack1   = cass4
+UN  172.18.0.3  524.71 KiB  16      74.7%             be36c737-...  rack1
+UN  172.18.0.2  525.26 KiB  16      74.7%             32acca16-...  rack1
+
+(salida tomada desde cass4: el Load de cada nodo tarda un poco en propagarse por gossip)
+```
+
+| Nodo | Load antes | Owns antes | Load después | Owns después |
+|------|-----------|-----------|--------------|--------------|
+| cass1 (172.18.0.2) | 650,41 KiB | 100 % | 525,26 KiB | 74,7 % |
+| cass2 (172.18.0.3) | 662,69 KiB | 100 % | 524,71 KiB | 74,7 % |
+| cass3 (172.18.0.4) | 662,71 KiB | 100 % | 532,92 KiB | 77,4 % |
+| cass4 (172.18.0.6) | – | – | 514,33 KiB | 73,2 % |
+
+### 4. Consultas después y comparación
+
+```bash
+docker exec app python src/consultas.py --aeroxerador MB-01 --dia 2026-11-08 > consultas_despois.txt
+diff consultas_antes.txt consultas_despois.txt && echo "IGUALES"
+```
+
+```
+IGUALES   (186 líneas en cada fichero, 144 lecturas en la consulta 1)
+```
+
+Los datos no cambian: solo se han redistribuido entre los 4 nodos.
+
+**Conclusión.** Con factor de replicación 3, cada dato está en 3 de los nodos. Con 3 nodos cada uno tenía el 100 %; con 4, cada uno tiene ~75 % (3/4). El *Owns* se reparte casi por igual y el *Load* de los nodos antiguos baja ~20 % tras el `cleanup`. Las consultas devuelven exactamente lo mismo. Antes de cargar los datos se hizo `nodetool flush` para que el *Load* reflejara los SSTables en disco y no solo la memoria.
