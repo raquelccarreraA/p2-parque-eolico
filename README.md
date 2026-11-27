@@ -72,8 +72,211 @@ Cómo cumple las reglas:
 
 Antes de guardar, el script **comprueba el contrato** (rangos, 144 lecturas por aerogenerador y día, sin duplicados, parados con 0 kW y 0 rpm). Si algo falla, no guarda nada y muestra el error.
 
+
 ## Modelo de datos (4.1)
 
+Esquema completo en [`cql/02_tablas.cql`](cql/02_tablas.cql). Se crea después del keyspace:
+
+```bash
+docker exec -i cass1 cqlsh < cql/02_tablas.cql
+docker exec cass1 cqlsh -e "DESCRIBE TABLES" -k parque
+```
+
+### Por qué una tabla por consulta
+
+En Cassandra no hay `JOIN` y solo se puede filtrar de forma eficiente por la **clave de partición**. Por eso se parte de las consultas, no de las entidades: cada tabla guarda los datos ya agrupados (partición) y ordenados (columnas de agrupación) como los pide su consulta, y así cada consulta lee **una sola partición** en un solo nodo. El precio es duplicar datos (cada lectura se escribe en varias tablas), que en Cassandra es barato: escribir es rápido y el disco es lo que sobra.
+
+### Columnas derivadas
+
+Además de los campos del contrato, `carga.py` calcula dos columnas para poder usarlas en las claves:
+
+| Columna | Tipo CQL | Cómo se calcula | Para qué |
+|---|---|---|---|
+| `dia` | `date` | la fecha de `data_hora` (`"2026-11-01 00:10:00"[:10]`) | partir por día: las particiones no crecen sin límite |
+| `parque_id` | `text` | prefijo de `aeroxerador_id` (`"MB-07"` → `"MB"`) | preparado para más parques (consultas 3 y 4) |
+
+### Las cuatro tablas
+
+| # | Consulta | Tabla | Clave de partición | Columnas de agrupación | Filas por partición |
+|---|---|---|---|---|---|
+| 1 | Lecturas de un aerogenerador en un día (recientes primero) | `lecturas_por_aeroxerador_dia` | `(aeroxerador_id, dia)` | `data_hora DESC` | 144 |
+| 2 | Energía de un aerogenerador en un día | `energia_por_aeroxerador_dia` | `(aeroxerador_id, dia)` | `data_hora` | 144 |
+| 3 | Alarmas de un día en todo el parque (orden horario) | `alarmas_por_parque_dia` | `(parque_id, dia)` | `data_hora ASC, aeroxerador_id ASC` | ~17 (máx. 1.728) |
+| 4 | Última lectura de cada aerogenerador | `ultima_lectura_por_parque` | `parque_id` | `aeroxerador_id` | 12 |
+
+**1. `lecturas_por_aeroxerador_dia`**
+- *Partición `(aeroxerador_id, dia)`*: la consulta siempre da un aerogenerador y un día, así que todas sus lecturas están juntas en una partición. Si la partición fuese solo `aeroxerador_id`, crecería sin límite (52.560 filas al año, y sigue).
+- *Agrupación `data_hora DESC`*: identifica cada lectura dentro del día (no hay dos con la misma hora, regla 1) y las guarda ya de la más reciente a la más antigua, sin ordenar al leer.
+
+```sql
+SELECT * FROM lecturas_por_aeroxerador_dia WHERE aeroxerador_id = 'MB-01' AND dia = '2026-11-01';
+```
+
+**2. `energia_por_aeroxerador_dia`**
+- Guarda solo la potencia de cada intervalo de 10 minutos. La energía es `SUM(potencia_kw) × 10/60` kWh; Cassandra hace la suma dentro de una sola partición.
+- *Partición `(aeroxerador_id, dia)`*: la que pide la consulta.
+- *Agrupación `data_hora`*: una fila por intervalo. Si se carga dos veces el mismo CSV, cada `INSERT` sobrescribe la misma fila (upsert) y **la energía no se duplica**. Por eso se descartó una tabla `counter`: sumar dos veces la misma lectura daría una energía falsa, y además los contadores no admiten decimales.
+
+```sql
+SELECT SUM(potencia_kw) AS suma_kw FROM energia_por_aeroxerador_dia WHERE aeroxerador_id = 'MB-01' AND dia = '2026-11-01';
+-- energía_kwh = suma_kw * 10 / 60   (se calcula en consultas.py)
+```
+
+**3. `alarmas_por_parque_dia`**
+- Solo se insertan las lecturas con `estado = 'alarma'`.
+- *Partición `(parque_id, dia)`*: la consulta pide un día de todo el parque, sin aerogenerador concreto. Con `parque_id`, cuando lleguen más parques cada uno tendrá sus propias particiones y no se mezclarán.
+- *Agrupación `data_hora ASC, aeroxerador_id ASC`*: `data_hora` da el orden horario; `aeroxerador_id` hace falta porque dos aerogeneradores pueden dar alarma a la misma hora, y con solo `data_hora` la segunda sobrescribiría a la primera.
+
+```sql
+SELECT * FROM alarmas_por_parque_dia WHERE parque_id = 'MB' AND dia = '2026-11-01';
+```
+
+**4. `ultima_lectura_por_parque`**
+- *Partición `parque_id`*: el panel de control lee los 12 aerogeneradores de una vez, de una partición.
+- *Agrupación `aeroxerador_id`*: una fila por aerogenerador que se **sobrescribe** con cada lectura nueva, así que nunca hay más de 12 filas.
+- Se escribe con `USING TIMESTAMP` igual a `data_hora` en microsegundos. Cassandra se queda con la escritura de timestamp mayor, así que la fila guarda siempre la lectura más reciente **aunque los días se carguen desordenados** (por ejemplo, si se vuelve a cargar un día antiguo después del día del apartado 4.3.4).
+
+```sql
+SELECT * FROM ultima_lectura_por_parque WHERE parque_id = 'MB';
+```
+
+### Tamaño de las particiones al cabo de un año
+
+Con 12 aerogeneradores, 144 lecturas por aerogenerador y día y ~1 % de alarmas:
+
+| Tabla | Filas por partición | Particiones nuevas al año | Filas al año | ¿Crece la partición con el tiempo? |
+|---|---|---|---|---|
+| `lecturas_por_aeroxerador_dia` | 144 | 12 × 365 = 4.380 | 630.720 | No: cada día empieza una nueva |
+| `energia_por_aeroxerador_dia` | 144 | 4.380 | 630.720 | No: cada día empieza una nueva |
+| `alarmas_por_parque_dia` | ~17 (1 % de 1.728); máx. 1.728 | 365 por parque | ~6.200 | No: cada día empieza una nueva |
+| `ultima_lectura_por_parque` | 12 | 1 por parque (siempre la misma) | 12 | No: las filas se sobrescriben |
+
+Ninguna partición pasa de 1.728 filas (unos pocos cientos de KB como mucho), muy por debajo de lo que Cassandra maneja bien (~100 MB por partición). Lo que crece con los años es el **número** de particiones, y eso es justo lo que se reparte entre nodos: al añadir un nodo (4.4), se lleva parte de ellas.
+
+### Del contrato de datos a CQL
+
+| Campo | Contrato | Tipo CQL | Por qué |
+|---|---|---|---|
+| `aeroxerador_id` | texto, `MB-01`…`MB-12` | `text` | cadena corta; el prefijo identifica el parque |
+| `data_hora` | fecha y hora, cada 10 min | `timestamp` | fecha y hora exactas (ms); se guarda en UTC y permite ordenar |
+| `vento_ms` | decimal, 1 decimal, 0,0–30,0 | `decimal` | guarda el valor exacto (8.7 es 8.7); con `float` saldría 8.699999… |
+| `direccion_graos` | entero, 0–359 | `int` | número entero |
+| `potencia_kw` | decimal, 1 decimal, 0,0–3.000,0 | `decimal` | exacto; además `SUM` de la consulta 2 no acumula errores de redondeo |
+| `rotor_rpm` | decimal, 1 decimal, 0,0–16,0 | `decimal` | exacto |
+| `temp_xerador_c` | decimal, 1 decimal, 10,0–90,0 | `decimal` | exacto |
+| `estado` | `ok`, `alarma` o `parado` | `text` | CQL no tiene `enum`; los valores los garantiza el generador, que valida el contrato antes de guardar |
+
+CQL no tiene `NOT NULL` ni `CHECK`: que los campos sean obligatorios y estén en rango lo comprueba el generador (`xera_lecturas.py`), que valida el contrato antes de escribir el CSV. Las columnas de la clave primaria sí son obligatorias: Cassandra rechaza un `INSERT` sin ellas.
+
+### Notas para la carga (issue 4)
+
+- Por cada lectura del CSV: `INSERT` en `lecturas_por_aeroxerador_dia`, `energia_por_aeroxerador_dia` y `ultima_lectura_por_parque` (esta con `USING TIMESTAMP`), y en `alarmas_por_parque_dia` solo si `estado == 'alarma'`.
+- Los decimales se pasan como `decimal.Decimal(texto_del_csv)` (no `float`) para que se guarden exactos.
+- `data_hora` se trata como UTC: `datetime.strptime(s, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)`; `dia` es su `.date()`; el `USING TIMESTAMP` es `int(data_hora.timestamp() * 1_000_000)`.
+
+## Carga de datos y consultas (4.2)
+
+Una vez creadas las tablas (`cql/02_tablas.cql`) y generado `lecturas.csv`, cargar las lecturas en las cuatro tablas de Cassandra (inserción concurrente con sentencias preparadas):
+
+    docker exec app python src/carga.py --archivo lecturas.csv
+
+Ejecutar las cuatro consultas para un aerogenerador y un día concretos:
+
+    docker exec app python src/consultas.py --aeroxerador MB-01 --dia 2026-11-01
+
+Por defecto la consulta 1 imprime las 144 filas del día para que la comparación de archivos (`diff`) de la fase de crecimiento compruebe el 100 % de los datos. Para acortar la salida en pantalla se puede usar `--limite`:
+
+    docker exec app python src/consultas.py --aeroxerador MB-01 --dia 2026-11-01 --limite 10
+
 ## Niveles de consistencia y pruebas de fallo (4.3)
+
+### Niveles de consistencia (4.3.2)
+
+El keyspace tiene 3 réplicas (RF = 3), y con 3 nodos cada partición está en los tres. El nivel de consistencia dice cuántas réplicas tienen que responder para dar una operación por buena:
+
+| Nivel | Réplicas que responden (RF = 3) | Nodos parados que aguanta |
+|---|---|---|
+| `ONE` | 1 | 2 |
+| `QUORUM` | 2 (3 // 2 + 1) | 1 |
+| `ALL` | 3 | 0 |
+
+Los niveles están en [`src/consistencia.py`](src/consistencia.py), y los usan `carga.py` (escrituras) y `consultas.py` (lecturas):
+
+| Operación | Nivel | Por qué |
+|---|---|---|
+| Escribir lecturas | `QUORUM` | Cuando la carga da una lectura por guardada, ya está en **2 nodos**: si cae uno, la lectura sigue en otro y no se pierde (condición 2 del encargo). Con un nodo parado se puede seguir cargando. |
+| Leer lecturas | `QUORUM` | Como se escribe en 2 réplicas y se lee de 2, siempre coinciden al menos en una (W + R = 2 + 2 > 3): **siempre se lee la última lectura confirmada**. Con un nodo parado las consultas siguen funcionando. |
+| Escribir alarmas | `QUORUM` | Una alarma es lo que menos se puede perder, así que tiene que quedar en al menos 2 nodos. No se usa `ALL`, porque con un nodo parado fallaría la escritura y la alarma no se guardaría. |
+| Leer alarmas | `QUORUM` | Con W + R > 3, una alarma ya confirmada **siempre aparece** en la consulta; con `ONE` podría leerse de la réplica que aún no la tiene. |
+
+Por qué no los otros niveles:
+- **`ONE`**: es el más rápido y aguanta 2 nodos parados, pero una escritura confirmada por un solo nodo se pierde si ese nodo falla antes de copiarla a los demás. Además, leer con `ONE` puede devolver datos viejos (la réplica que responde puede no tener la última escritura).
+- **`ALL`**: siempre lee lo último, pero un solo nodo parado basta para que falle todo, que es justo lo que el encargo pide evitar.
+
+El precio de `QUORUM` es que con **2 nodos parados** no funciona ni la carga ni las consultas (se ve abajo). Con 3 nodos es lo esperable: si se pierde la mayoría, Cassandra prefiere dar error a devolver datos que pueden no estar al día.
+
+### Pruebas de fallo desde Python (4.3.3)
+
+[`src/pruebas_fallo.py`](src/pruebas_fallo.py) hace una operación con el nivel que se le pida y muestra qué nodos están parados, cuántas réplicas pide ese nivel, cuántas están vivas y el resultado o el error:
+
+```bash
+docker stop cass3                      # parar un nodo (esperar ~10 s a que los demás lo vean caído)
+docker exec app python src/pruebas_fallo.py --operacion escribir --nivel QUORUM
+docker exec app python src/pruebas_fallo.py --operacion leer --nivel ALL --aeroxerador MB-01 --dia 2026-11-01
+docker start cass3                     # volver a arrancarlo
+```
+
+- `--operacion escribir` guarda una lectura del aerogenerador de prueba `PROBA-01`, que no aparece en las consultas de la empresa (que son de `MB-01`…`MB-12`).
+- `--operacion leer` cuenta las lecturas de un aerogenerador en un día (144 si está todo cargado).
+
+#### Ejemplo 1 · funciona: 1 nodo parado, escribir con `QUORUM`
+
+- **Nodos parados:** `cass3`
+- **Operación y nivel:** escribir una lectura con `QUORUM`
+
+```
+=== Prueba de fallo ===
+Nodos parados:          cass3
+Operación:              escribir una lectura (PROBA-01, 2026-11-27 11:00)
+Nivel de consistencia:  QUORUM
+Réplicas de la partición: 3, vivas: 2
+Réplicas que pide QUORUM: 2
+--- Resultado ---
+OK: escritura confirmada por al menos 2 réplica(s).
+```
+
+- **Explicación:** `QUORUM` necesita **2** réplicas y hay **2** vivas (`cass1` y `cass2`), así que la escritura se confirma. La copia de `cass3` no se pierde: el coordinador la guarda como *hint* y se la entrega cuando `cass3` vuelve. Es el caso de la condición 2 del encargo: cae un servidor y el servicio sigue funcionando.
+
+#### Ejemplo 2 · falla: 2 nodos parados, leer con `ALL`
+
+- **Nodos parados:** `cass2` y `cass3`
+- **Operación y nivel:** leer las lecturas de `MB-01` el 2026-11-01 con `ALL`
+
+```
+=== Prueba de fallo ===
+Nodos parados:          cass2, cass3
+Operación:              leer las lecturas de MB-01 el 2026-11-01
+Nivel de consistencia:  ALL
+Réplicas de la partición: 3, vivas: 1
+Réplicas que pide ALL: 3
+--- Resultado ---
+ERROR Unavailable: ALL necesita 3 réplicas y solo hay 1 vivas. Cassandra no lo intenta.
+  Mensaje: Error from server: code=1000 [Unavailable exception] message="Cannot achieve consistency level ALL" info={'consistency': 'ALL', 'required_replicas': 3, 'alive_replicas': 1}
+```
+
+- **Explicación:** `ALL` necesita las **3** réplicas y solo hay **1** viva (`cass1`). El coordinador sabe por *gossip* que los otros dos están caídos, así que ni lo intenta: responde `Unavailable` enseguida, sin esperar a ningún *timeout*. Los datos siguen en `cass1`, pero no se pueden leer con la garantía que pide `ALL`.
+
+#### Todas las combinaciones
+
+Para completar, se lanzaron las dos operaciones con los tres niveles, con 1 y con 2 nodos parados (salidas reales del script):
+
+| Nodos parados | Réplicas vivas | `ONE` (pide 1) | `QUORUM` (pide 2) | `ALL` (pide 3) |
+|---|---|---|---|---|
+| 1 (`cass3`) | 2 | ✅ escribe y lee | ✅ escribe y lee | ❌ `Unavailable` |
+| 2 (`cass2`, `cass3`) | 1 | ✅ escribe y lee | ❌ `Unavailable` | ❌ `Unavailable` |
+
+La regla siempre es la misma: **funciona si las réplicas vivas son al menos las que pide el nivel**. Con nuestros niveles (`QUORUM`), el sistema aguanta 1 nodo parado, pero no 2.
+
+> Con 2 nodos parados, el driver reintenta la operación en otro nodo y, como los demás también están caídos, devuelve un `NoHostAvailable` que lleva dentro el `Unavailable` del nodo vivo. El script lo saca de ahí para mostrar la causa real.
 
 ## Crecimiento del clúster (4.4)
