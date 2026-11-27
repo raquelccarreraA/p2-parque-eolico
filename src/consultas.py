@@ -1,7 +1,9 @@
 import argparse
 from datetime import date
 from decimal import Decimal
+from cassandra.query import SimpleStatement
 from conexiones import conectar_cassandra
+from consistencia import LEER_ALARMAS, LEER_LECTURAS
 from sentencias_cql import (
     CONSULTAR_ALARMAS_PARQUE,
     CONSULTAR_ENERGIA_DIA,
@@ -35,17 +37,24 @@ def leer_argumentos():
     return analizador.parse_args()
 
 
+def con_nivel(sentencia_cql, nivel):
+    # Envuelve la consulta para que se ejecute con su nivel de consistencia (ver consistencia.py)
+    return SimpleStatement(sentencia_cql, consistency_level=nivel)
+
+
 def consultar_lecturas_dia(sesion, aeroxerador_id, dia, limite):
     print(f"\n=== 1. Lecturas de {aeroxerador_id} el {dia} (mas recientes primero) ===")
 
     # Si el usuario pasa un limite, usamos la consulta con LIMIT
     if limite is not None:
         filas = list(
-            sesion.execute(CONSULTAR_LECTURAS_DIA_CON_LIMITE, (aeroxerador_id, dia, limite))
+            sesion.execute(con_nivel(CONSULTAR_LECTURAS_DIA_CON_LIMITE, LEER_LECTURAS),
+                           (aeroxerador_id, dia, limite))
         )
     else:
         filas = list(
-            sesion.execute(CONSULTAR_LECTURAS_DIA, (aeroxerador_id, dia))
+            sesion.execute(con_nivel(CONSULTAR_LECTURAS_DIA, LEER_LECTURAS),
+                           (aeroxerador_id, dia))
         )
 
     print(f"Total filas mostradas: {len(filas)}")
@@ -61,7 +70,8 @@ def consultar_energia_dia(sesion, aeroxerador_id, dia):
     print(f"\n=== 2. Energia producida por {aeroxerador_id} el {dia} ===")
 
     # Cassandra suma todas las potencias de esa particion directamente
-    fila = sesion.execute(CONSULTAR_ENERGIA_DIA, (aeroxerador_id, dia)).one()
+    fila = sesion.execute(con_nivel(CONSULTAR_ENERGIA_DIA, LEER_LECTURAS),
+                          (aeroxerador_id, dia)).one()
 
     # Si no hay lecturas para ese dia, la suma viene como None y ponemos 0
     suma_potencia = fila.suma_potencia if fila and fila.suma_potencia is not None else Decimal("0")
@@ -75,7 +85,8 @@ def consultar_energia_dia(sesion, aeroxerador_id, dia):
 def consultar_alarmas_parque(sesion, parque_id, dia):
     print(f"\n=== 3. Alarmas del parque {parque_id} el {dia} (orden horario) ===")
 
-    filas = list(sesion.execute(CONSULTAR_ALARMAS_PARQUE, (parque_id, dia)))
+    filas = list(sesion.execute(con_nivel(CONSULTAR_ALARMAS_PARQUE, LEER_ALARMAS),
+                                (parque_id, dia)))
 
     print(f"Total alarmas: {len(filas)}")
     for fila in filas:
@@ -88,7 +99,8 @@ def consultar_alarmas_parque(sesion, parque_id, dia):
 def consultar_ultima_lectura(sesion, parque_id):
     print(f"\n=== 4. Ultima lectura de cada aerogenerador del parque {parque_id} ===")
 
-    filas = list(sesion.execute(CONSULTAR_ULTIMA_LECTURA, (parque_id,)))
+    filas = list(sesion.execute(con_nivel(CONSULTAR_ULTIMA_LECTURA, LEER_LECTURAS),
+                                (parque_id,)))
 
     print(f"Total aerogeneradores: {len(filas)}")
     for fila in filas:

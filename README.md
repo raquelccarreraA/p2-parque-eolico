@@ -190,4 +190,93 @@ Por defecto la consulta 1 imprime las 144 filas del día para que la comparació
 
 ## Niveles de consistencia y pruebas de fallo (4.3)
 
+### Niveles de consistencia (4.3.2)
+
+El keyspace tiene 3 réplicas (RF = 3), y con 3 nodos cada partición está en los tres. El nivel de consistencia dice cuántas réplicas tienen que responder para dar una operación por buena:
+
+| Nivel | Réplicas que responden (RF = 3) | Nodos parados que aguanta |
+|---|---|---|
+| `ONE` | 1 | 2 |
+| `QUORUM` | 2 (3 // 2 + 1) | 1 |
+| `ALL` | 3 | 0 |
+
+Los niveles están en [`src/consistencia.py`](src/consistencia.py), y los usan `carga.py` (escrituras) y `consultas.py` (lecturas):
+
+| Operación | Nivel | Por qué |
+|---|---|---|
+| Escribir lecturas | `QUORUM` | Cuando la carga da una lectura por guardada, ya está en **2 nodos**: si cae uno, la lectura sigue en otro y no se pierde (condición 2 del encargo). Con un nodo parado se puede seguir cargando. |
+| Leer lecturas | `QUORUM` | Como se escribe en 2 réplicas y se lee de 2, siempre coinciden al menos en una (W + R = 2 + 2 > 3): **siempre se lee la última lectura confirmada**. Con un nodo parado las consultas siguen funcionando. |
+| Escribir alarmas | `QUORUM` | Una alarma es lo que menos se puede perder, así que tiene que quedar en al menos 2 nodos. No se usa `ALL`, porque con un nodo parado fallaría la escritura y la alarma no se guardaría. |
+| Leer alarmas | `QUORUM` | Con W + R > 3, una alarma ya confirmada **siempre aparece** en la consulta; con `ONE` podría leerse de la réplica que aún no la tiene. |
+
+Por qué no los otros niveles:
+- **`ONE`**: es el más rápido y aguanta 2 nodos parados, pero una escritura confirmada por un solo nodo se pierde si ese nodo falla antes de copiarla a los demás. Además, leer con `ONE` puede devolver datos viejos (la réplica que responde puede no tener la última escritura).
+- **`ALL`**: siempre lee lo último, pero un solo nodo parado basta para que falle todo, que es justo lo que el encargo pide evitar.
+
+El precio de `QUORUM` es que con **2 nodos parados** no funciona ni la carga ni las consultas (se ve abajo). Con 3 nodos es lo esperable: si se pierde la mayoría, Cassandra prefiere dar error a devolver datos que pueden no estar al día.
+
+### Pruebas de fallo desde Python (4.3.3)
+
+[`src/pruebas_fallo.py`](src/pruebas_fallo.py) hace una operación con el nivel que se le pida y muestra qué nodos están parados, cuántas réplicas pide ese nivel, cuántas están vivas y el resultado o el error:
+
+```bash
+docker stop cass3                      # parar un nodo (esperar ~10 s a que los demás lo vean caído)
+docker exec app python src/pruebas_fallo.py --operacion escribir --nivel QUORUM
+docker exec app python src/pruebas_fallo.py --operacion leer --nivel ALL --aeroxerador MB-01 --dia 2026-11-01
+docker start cass3                     # volver a arrancarlo
+```
+
+- `--operacion escribir` guarda una lectura del aerogenerador de prueba `PROBA-01`, que no aparece en las consultas de la empresa (que son de `MB-01`…`MB-12`).
+- `--operacion leer` cuenta las lecturas de un aerogenerador en un día (144 si está todo cargado).
+
+#### Ejemplo 1 · funciona: 1 nodo parado, escribir con `QUORUM`
+
+- **Nodos parados:** `cass3`
+- **Operación y nivel:** escribir una lectura con `QUORUM`
+
+```
+=== Prueba de fallo ===
+Nodos parados:          cass3
+Operación:              escribir una lectura (PROBA-01, 2026-11-27 11:00)
+Nivel de consistencia:  QUORUM
+Réplicas de la partición: 3, vivas: 2
+Réplicas que pide QUORUM: 2
+--- Resultado ---
+OK: escritura confirmada por al menos 2 réplica(s).
+```
+
+- **Explicación:** `QUORUM` necesita **2** réplicas y hay **2** vivas (`cass1` y `cass2`), así que la escritura se confirma. La copia de `cass3` no se pierde: el coordinador la guarda como *hint* y se la entrega cuando `cass3` vuelve. Es el caso de la condición 2 del encargo: cae un servidor y el servicio sigue funcionando.
+
+#### Ejemplo 2 · falla: 2 nodos parados, leer con `ALL`
+
+- **Nodos parados:** `cass2` y `cass3`
+- **Operación y nivel:** leer las lecturas de `MB-01` el 2026-11-01 con `ALL`
+
+```
+=== Prueba de fallo ===
+Nodos parados:          cass2, cass3
+Operación:              leer las lecturas de MB-01 el 2026-11-01
+Nivel de consistencia:  ALL
+Réplicas de la partición: 3, vivas: 1
+Réplicas que pide ALL: 3
+--- Resultado ---
+ERROR Unavailable: ALL necesita 3 réplicas y solo hay 1 vivas. Cassandra no lo intenta.
+  Mensaje: Error from server: code=1000 [Unavailable exception] message="Cannot achieve consistency level ALL" info={'consistency': 'ALL', 'required_replicas': 3, 'alive_replicas': 1}
+```
+
+- **Explicación:** `ALL` necesita las **3** réplicas y solo hay **1** viva (`cass1`). El coordinador sabe por *gossip* que los otros dos están caídos, así que ni lo intenta: responde `Unavailable` enseguida, sin esperar a ningún *timeout*. Los datos siguen en `cass1`, pero no se pueden leer con la garantía que pide `ALL`.
+
+#### Todas las combinaciones
+
+Para completar, se lanzaron las dos operaciones con los tres niveles, con 1 y con 2 nodos parados (salidas reales del script):
+
+| Nodos parados | Réplicas vivas | `ONE` (pide 1) | `QUORUM` (pide 2) | `ALL` (pide 3) |
+|---|---|---|---|---|
+| 1 (`cass3`) | 2 | ✅ escribe y lee | ✅ escribe y lee | ❌ `Unavailable` |
+| 2 (`cass2`, `cass3`) | 1 | ✅ escribe y lee | ❌ `Unavailable` | ❌ `Unavailable` |
+
+La regla siempre es la misma: **funciona si las réplicas vivas son al menos las que pide el nivel**. Con nuestros niveles (`QUORUM`), el sistema aguanta 1 nodo parado, pero no 2.
+
+> Con 2 nodos parados, el driver reintenta la operación en otro nodo y, como los demás también están caídos, devuelve un `NoHostAvailable` que lleva dentro el `Unavailable` del nodo vivo. El script lo saca de ahí para mostrar la causa real.
+
 ## Crecimiento del clúster (4.4)
