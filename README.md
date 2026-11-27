@@ -6,10 +6,10 @@ Big Data Aplicado · UD1 · Proyecto en grupo
 
 | Persona | Issues | Perfil |
 |---|---|---|
-| A | 1 y 7 | Infraestructura |
-| B | 2 y 6 | Datos |
-| C | 3 y 5 | Modelo y consistencia |
-| D | 4 y 8 | Aplicación y presentación |
+| A - Raúl | 1 y 7 | Infraestructura |
+| B - Raquel | 2 y 6 | Datos |
+| C - Isma | 3 y 5 | Modelo y consistencia |
+| D - Carlos | 4 y 8 | Aplicación y presentación |
 
 ## Cómo arrancar y ejecutar
 
@@ -57,7 +57,7 @@ python3 src/xera_lecturas.py --dias 7 --inicio 2026-11-01 --semilla 42 --salida 
 
 | Parámetro | Por defecto | Para qué |
 |---|---|---|
-| `--dias` | 7 | número de días (mínimo 7) |
+| `--dias` | 7 | número de días (7 para el conjunto principal; 1 para el día nuevo de 4.3.4) |
 | `--inicio` | 2026-11-01 | primer día |
 | `--semilla` | 42 | misma semilla = mismos datos |
 | `--salida` | lecturas.csv | fichero CSV |
@@ -103,6 +103,10 @@ Además de los campos del contrato, `carga.py` calcula dos columnas para poder u
 | 2 | Energía de un aerogenerador en un día | `energia_por_aeroxerador_dia` | `(aeroxerador_id, dia)` | `data_hora` | 144 |
 | 3 | Alarmas de un día en todo el parque (orden horario) | `alarmas_por_parque_dia` | `(parque_id, dia)` | `data_hora ASC, aeroxerador_id ASC` | ~17 (máx. 1.728) |
 | 4 | Última lectura de cada aerogenerador | `ultima_lectura_por_parque` | `parque_id` | `aeroxerador_id` | 12 |
+
+
+
+
 
 **1. `lecturas_por_aeroxerador_dia`**
 - *Partición `(aeroxerador_id, dia)`*: la consulta siempre da un aerogenerador y un día, así que todas sus lecturas están juntas en una partición. Si la partición fuese solo `aeroxerador_id`, crecería sin límite (52.560 filas al año, y sigue).
@@ -278,5 +282,104 @@ Para completar, se lanzaron las dos operaciones con los tres niveles, con 1 y co
 La regla siempre es la misma: **funciona si las réplicas vivas son al menos las que pide el nivel**. Con nuestros niveles (`QUORUM`), el sistema aguanta 1 nodo parado, pero no 2.
 
 > Con 2 nodos parados, el driver reintenta la operación en otro nodo y, como los demás también están caídos, devuelve un `NoHostAvailable` que lleva dentro el `Unavailable` del nodo vivo. El script lo saca de ahí para mostrar la causa real.
+
+### Nodo caído: cargar un día y comprobar la recuperación (4.3.4) 
+
+Con `cass3` parado se carga un día nuevo (2026-11-08); al arrancarlo de nuevo se comprueba que tiene esas lecturas.
+
+**1. Generar el día nuevo** (otra semilla, para que no sea igual al primer día):
+
+```bash
+python3 src/xera_lecturas.py --dias 1 --inicio 2026-11-08 --semilla 7 --salida dia_novo.csv
+```
+
+**2. Parar `cass3`** y comprobar que aparece `DN`:
+
+```bash
+docker stop cass3
+docker exec cass1 nodetool status parque
+```
+```
+UN  172.25.0.2  81.6 KiB   16  100.0%  4e5e9879-...  rack1
+DN  172.25.0.4  93.92 KiB  16  100.0%  6a6a1c0c-...  rack1   = cass3
+UN  172.25.0.3  98.87 KiB  16  100.0%  5f3157d7-...  rack1
+```
+![cass3 parado (DN)](img/4.3.4_1_cass3_caido.png)
+
+**3. Cargar el día con `cass3` caído.** Funciona porque la carga escribe con `QUORUM` (2 réplicas) y quedan 2 vivas:
+
+```bash
+docker exec app python src/carga.py --archivo dia_novo.csv
+```
+```
+Tabla lecturas_por_aeroxerador_dia: 1728 inserciones completadas.
+Tabla energia_por_aeroxerador_dia: 1728 inserciones completadas.
+Tabla alarmas_por_parque_dia: 17 inserciones completadas.
+Tabla ultima_lectura_por_parque: 1728 inserciones completadas.
+```
+![Carga del día 8 con cass3 caído](img/4.3.4_2_carga.png)
+
+**4. Los hints.** Cada nodo que coordinó escrituras guarda la parte de `cass3` en un fichero de *hints*, cuyo nombre empieza por el Host ID de `cass3` (`6a6a1c0c-…`):
+
+```bash
+docker exec cass1 ls -l /var/lib/cassandra/hints
+docker exec cass2 ls -l /var/lib/cassandra/hints
+```
+```
+cass1: 502427 bytes  6a6a1c0c-9ed3-4be9-be5f-9ce1577397ff-1795793357683-2.hints
+cass2: 332526 bytes  6a6a1c0c-9ed3-4be9-be5f-9ce1577397ff-1795793359458-2.hints
+```
+![Ficheros de hints para cass3 en cass1 y cass2](img/4.3.4_3_hints.png)
+
+> `nodetool listpendinghints` decía *"no pending hints"*: mientras el nodo destino está caído, el fichero sigue abierto, y ese comando solo muestra los ficheros ya cerrados y listos para enviar. Por eso se comprueba mirando la carpeta.
+
+**5. Arrancar `cass3`.** Vuelve a `UN`, su `Load` pasa de 93,92 KiB a **654,46 KiB** (lo que ha recibido) y las carpetas de hints quedan vacías (`total 0`): se le han entregado.
+
+```bash
+docker start cass3
+docker exec cass1 nodetool status parque
+docker exec cass1 ls -l /var/lib/cassandra/hints   # total 0
+```
+
+![cass3 vuelve (UN) y los hints se vacían](img/4.3.4_4_recuperacion.png)
+
+**6. Comprobación: `cass3` tiene los datos él solo.** Se paran `cass1` y `cass2`, así solo puede responder `cass3`:
+
+```bash
+docker stop cass1 cass2
+docker exec cass3 cqlsh -e "CONSISTENCY ONE; SELECT COUNT(*) FROM parque.lecturas_por_aeroxerador_dia WHERE aeroxerador_id='MB-01' AND dia='2026-11-08';"
+docker exec cass3 cqlsh -e "CONSISTENCY ONE; SELECT aeroxerador_id, data_hora FROM parque.ultima_lectura_por_parque WHERE parque_id='MB';"
+docker start cass1 cass2
+```
+```
+-- Consulta 1: lecturas de MB-01 el día 8
+ count
+-------
+   144
+
+-- Consulta 2: última lectura de cada aerogenerador
+ aeroxerador_id | data_hora
+----------------+---------------------------------
+          MB-01 | 2026-11-08 23:50:00.000000+0000
+          MB-02 | 2026-11-08 23:50:00.000000+0000
+          MB-03 | 2026-11-08 23:50:00.000000+0000
+          MB-04 | 2026-11-08 23:50:00.000000+0000
+          MB-05 | 2026-11-08 23:50:00.000000+0000
+          MB-06 | 2026-11-08 23:50:00.000000+0000
+          MB-07 | 2026-11-08 23:50:00.000000+0000
+          MB-08 | 2026-11-08 23:50:00.000000+0000
+          MB-09 | 2026-11-08 23:50:00.000000+0000
+          MB-10 | 2026-11-08 23:50:00.000000+0000
+          MB-11 | 2026-11-08 23:50:00.000000+0000
+          MB-12 | 2026-11-08 23:50:00.000000+0000
+```
+![cass3 responde solo con las lecturas del día 8](img/4.3.4_5_cass3_solo.png)
+
+**Cómo recibió `cass3` las lecturas: *hinted handoff*.** Al escribir con `cass3` caído, el coordinador guarda la escritura en las réplicas vivas y además apunta un *hint* ("esto era para `cass3`"). Cuando `cass3` vuelve, el *gossip* avisa a los demás y estos le entregan los hints.
+
+Los hints solo se guardan durante **3 horas** (`max_hint_window`). Si un nodo está caído más tiempo, hay que sincronizarlo con `nodetool repair`.
+
+>  NOTA: Durante las pruebas de fallo usar solo `docker exec`, nunca `docker compose up`: arrancaría de nuevo los nodos parados (el servicio `app` depende de ellos).
+
 
 ## Crecimiento del clúster (4.4)
