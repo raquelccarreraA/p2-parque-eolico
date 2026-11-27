@@ -28,11 +28,12 @@ Comprobar que los tres nodos están `UN` (Up/Normal):
 docker exec cass1 nodetool status
 ```
 
-### 2. Keyspace (3 réplicas, `NetworkTopologyStrategy`)
+### 2. Keyspace y tablas
 
 ```bash
-docker exec -i cass1 cqlsh < cql/01_keyspace.cql
-docker exec cass1 cqlsh -e "DESCRIBE KEYSPACE parque"
+docker exec -i cass1 cqlsh < cql/01_keyspace.cql     # keyspace con 3 réplicas (NetworkTopologyStrategy)
+docker exec -i cass1 cqlsh < cql/02_tablas.cql       # las 4 tablas (ver 4.1)
+docker exec cass1 cqlsh -e "DESCRIBE TABLES" -k parque
 ```
 
 ### 3. Contenedor `app` (Python + cassandra-driver)
@@ -41,18 +42,18 @@ Desde Windows el driver no ve las IP internas de Docker, por eso los scripts se 
 
 ```bash
 docker compose --profile app up -d --build app
-docker compose exec app python src/<script>.py
-docker compose exec app bash        # shell interactivo
+docker exec app python src/<script>.py
+docker exec -it app bash            # shell interactivo
 ```
 
 Dentro del contenedor, los nodos son accesibles como `cass1`, `cass2` y `cass3` (también en la variable `CASSANDRA_HOSTS`).
 
-### 4. Generador de lecturas (`src/xera_lecturas.py`)        
+### 4. Generador de lecturas (`src/xera_lecturas.py`)
 
 Como no tenemos acceso al SCADA, las lecturas se generan con un script que cumple siempre el contrato de datos (apartado 2).
 
 ```bash
-python3 src/xera_lecturas.py --dias 7 --inicio 2026-11-01 --semilla 42 --salida lecturas.csv
+docker exec app python src/xera_lecturas.py --dias 7 --inicio 2026-11-01 --semilla 42 --salida lecturas.csv
 ```
 
 | Parámetro | Por defecto | Para qué |
@@ -72,6 +73,14 @@ Cómo cumple las reglas:
 
 Antes de guardar, el script **comprueba el contrato** (rangos, 144 lecturas por aerogenerador y día, sin duplicados, parados con 0 kW y 0 rpm). Si algo falla, no guarda nada y muestra el error.
 
+### 5. Carga y consultas
+
+```bash
+docker exec app python src/carga.py --archivo lecturas.csv
+docker exec app python src/consultas.py --aeroxerador MB-01 --dia 2026-11-01 --limite 10
+```
+
+Detalles en la sección 4.2.
 
 ## Modelo de datos (4.1)
 
@@ -103,10 +112,6 @@ Además de los campos del contrato, `carga.py` calcula dos columnas para poder u
 | 2 | Energía de un aerogenerador en un día | `energia_por_aeroxerador_dia` | `(aeroxerador_id, dia)` | `data_hora` | 144 |
 | 3 | Alarmas de un día en todo el parque (orden horario) | `alarmas_por_parque_dia` | `(parque_id, dia)` | `data_hora ASC, aeroxerador_id ASC` | ~17 (máx. 1.728) |
 | 4 | Última lectura de cada aerogenerador | `ultima_lectura_por_parque` | `parque_id` | `aeroxerador_id` | 12 |
-
-
-
-
 
 **1. `lecturas_por_aeroxerador_dia`**
 - *Partición `(aeroxerador_id, dia)`*: la consulta siempre da un aerogenerador y un día, así que todas sus lecturas están juntas en una partición. Si la partición fuese solo `aeroxerador_id`, crecería sin límite (52.560 filas al año, y sigue).
@@ -172,25 +177,25 @@ Ninguna partición pasa de 1.728 filas (unos pocos cientos de KB como mucho), mu
 
 CQL no tiene `NOT NULL` ni `CHECK`: que los campos sean obligatorios y estén en rango lo comprueba el generador (`xera_lecturas.py`), que valida el contrato antes de escribir el CSV. Las columnas de la clave primaria sí son obligatorias: Cassandra rechaza un `INSERT` sin ellas.
 
-### Notas para la carga (issue 4)
-
-- Por cada lectura del CSV: `INSERT` en `lecturas_por_aeroxerador_dia`, `energia_por_aeroxerador_dia` y `ultima_lectura_por_parque` (esta con `USING TIMESTAMP`), y en `alarmas_por_parque_dia` solo si `estado == 'alarma'`.
-- Los decimales se pasan como `decimal.Decimal(texto_del_csv)` (no `float`) para que se guarden exactos.
-- `data_hora` se trata como UTC: `datetime.strptime(s, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)`; `dia` es su `.date()`; el `USING TIMESTAMP` es `int(data_hora.timestamp() * 1_000_000)`.
-
 ## Carga de datos y consultas (4.2)
 
 Una vez creadas las tablas (`cql/02_tablas.cql`) y generado `lecturas.csv`, cargar las lecturas en las cuatro tablas de Cassandra (inserción concurrente con sentencias preparadas):
 
-    docker exec app python src/carga.py --archivo lecturas.csv
+```bash
+docker exec app python src/carga.py --archivo lecturas.csv
+```
 
 Ejecutar las cuatro consultas para un aerogenerador y un día concretos:
 
-    docker exec app python src/consultas.py --aeroxerador MB-01 --dia 2026-11-01
+```bash
+docker exec app python src/consultas.py --aeroxerador MB-01 --dia 2026-11-01
+```
 
 Por defecto la consulta 1 imprime las 144 filas del día para que la comparación de archivos (`diff`) de la fase de crecimiento compruebe el 100 % de los datos. Para acortar la salida en pantalla se puede usar `--limite`:
 
-    docker exec app python src/consultas.py --aeroxerador MB-01 --dia 2026-11-01 --limite 10
+```bash
+docker exec app python src/consultas.py --aeroxerador MB-01 --dia 2026-11-01 --limite 10
+```
 
 ## Niveles de consistencia y pruebas de fallo (4.3)
 
@@ -283,14 +288,14 @@ La regla siempre es la misma: **funciona si las réplicas vivas son al menos las
 
 > Con 2 nodos parados, el driver reintenta la operación en otro nodo y, como los demás también están caídos, devuelve un `NoHostAvailable` que lleva dentro el `Unavailable` del nodo vivo. El script lo saca de ahí para mostrar la causa real.
 
-### Nodo caído: cargar un día y comprobar la recuperación (4.3.4) 
+### Nodo caído: cargar un día y comprobar la recuperación (4.3.4)
 
 Con `cass3` parado se carga un día nuevo (2026-11-08); al arrancarlo de nuevo se comprueba que tiene esas lecturas.
 
 **1. Generar el día nuevo** (otra semilla, para que no sea igual al primer día):
 
 ```bash
-python3 src/xera_lecturas.py --dias 1 --inicio 2026-11-08 --semilla 7 --salida dia_novo.csv
+docker exec app python src/xera_lecturas.py --dias 1 --inicio 2026-11-08 --semilla 7 --salida dia_novo.csv
 ```
 
 **2. Parar `cass3`** y comprobar que aparece `DN`:
@@ -379,11 +384,9 @@ docker start cass1 cass2
 
 Los hints solo se guardan durante **3 horas** (`max_hint_window`). Si un nodo está caído más tiempo, hay que sincronizarlo con `nodetool repair`.
 
->  NOTA: Durante las pruebas de fallo usar solo `docker exec`, nunca `docker compose up`: arrancaría de nuevo los nodos parados (el servicio `app` depende de ellos).
-
+> NOTA: Durante las pruebas de fallo usar solo `docker exec`, nunca `docker compose up`: arrancaría de nuevo los nodos parados (el servicio `app` depende de ellos).
 
 ## Crecimiento del clúster (4.4)
-
 
 Se añade un cuarto nodo (`cass4`) con el clúster funcionando, **sin cargar más datos** a partir de aquí. `cass4` está en el perfil `ampliar` de `compose.yaml`, así que `docker compose up -d` normal no lo arranca.
 
