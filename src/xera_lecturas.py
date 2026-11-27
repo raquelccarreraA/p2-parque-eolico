@@ -32,7 +32,7 @@ def limitar(valor, minimo, maximo):
 def calcular_potencia(vento):
     # regla 2: la potencia depende del viento
     if vento < 3 or vento > 25:
-        return 0                              # poco o demasiado viento: no produce
+        return 0.0                              # poco o demasiado viento: no produce
     if vento < 12:
         return 3000 * ((vento - 3) / 9) ** 3  # sube con el viento
     return random.uniform(2950, 3000)         # a tope, unos 3000 kW
