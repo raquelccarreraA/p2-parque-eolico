@@ -31,7 +31,7 @@ docker exec cass1 nodetool status
 ### 2. Keyspace y tablas
 
 ```bash
-docker exec -i cass1 cqlsh < cql/01_keyspace.cql     # keyspace con 3 réplicas
+docker exec -i cass1 cqlsh < cql/01_keyspace.cql     # keyspace con 3 réplicas (NetworkTopologyStrategy)
 docker exec -i cass1 cqlsh < cql/02_tablas.cql       # las 4 tablas (ver 4.1)
 docker exec cass1 cqlsh -e "DESCRIBE TABLES" -k parque
 ```
@@ -53,7 +53,7 @@ Dentro del contenedor, los nodos son accesibles como `cass1`, `cass2` y `cass3` 
 Como no tenemos acceso al SCADA, las lecturas se generan con un script que cumple siempre el contrato de datos (apartado 2).
 
 ```bash
-python3 src/xera_lecturas.py --dias 7 --inicio 2026-11-01 --semilla 42 --salida lecturas.csv
+docker exec app python src/xera_lecturas.py --dias 7 --inicio 2026-11-01 --semilla 42 --salida lecturas.csv
 ```
 
 | Parámetro | Por defecto | Para qué |
@@ -295,7 +295,7 @@ Con `cass3` parado se carga un día nuevo (2026-11-08); al arrancarlo de nuevo s
 **1. Generar el día nuevo** (otra semilla, para que no sea igual al primer día):
 
 ```bash
-python3 src/xera_lecturas.py --dias 1 --inicio 2026-11-08 --semilla 7 --salida dia_novo.csv
+docker exec app python src/xera_lecturas.py --dias 1 --inicio 2026-11-08 --semilla 7 --salida dia_novo.csv
 ```
 
 **2. Parar `cass3`** y comprobar que aparece `DN`:
