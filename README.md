@@ -433,7 +433,7 @@ UN  172.18.0.2  650.41 KiB  16      74.7%             32acca16-...  rack1
 docker exec cass1 nodetool cleanup parque
 docker exec cass2 nodetool cleanup parque
 docker exec cass3 nodetool cleanup parque
-docker exec cass1 nodetool status parque
+docker exec cass4 nodetool status parque
 ```
 
 **Qué hace `cleanup`:** al entrar `cass4`, los nodos antiguos dejan de ser réplica de parte de sus rangos de tokens, pero **siguen guardando esos datos** en disco (Cassandra no los borra automáticamente al hacer streaming). `nodetool cleanup` reescribe los SSTables y elimina las particiones que el nodo ya no posee, liberando espacio. No cambia lo que devuelven las consultas, solo el *Load* de los nodos antiguos. Hay que ejecutarlo en cada nodo antiguo, y no en `cass4`.
@@ -469,4 +469,4 @@ IGUALES   (186 líneas en cada fichero, 144 lecturas en la consulta 1)
 
 Los datos no cambian: solo se han redistribuido entre los 4 nodos.
 
-**Conclusión.** Con factor de replicación 3, cada dato está en 3 de los nodos. Con 3 nodos cada uno tenía el 100 %; con 4, cada uno tiene ~75 % (3/4). El *Owns* se reparte casi por igual y el *Load* de los nodos antiguos baja ~20 % tras el `cleanup`. Las consultas devuelven exactamente lo mismo. Antes de cargar los datos se hizo `nodetool flush` para que el *Load* reflejara los SSTables en disco y no solo la memoria.
+**Conclusión.** Con factor de replicación 3, cada dato está en 3 de los nodos. Con 3 nodos cada uno tenía el 100 %; con 4, cada uno tiene ~75 % (3/4). El *Owns* se reparte casi por igual y el *Load* de los nodos antiguos baja ~20 % tras el `cleanup`. Las consultas devuelven exactamente lo mismo. Antes de medir se hizo `nodetool flush` para que el *Load* reflejara los SSTables en disco y no solo la memoria.
