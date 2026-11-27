@@ -1,0 +1,186 @@
+
+=== 1. Lecturas de MB-01 el 2026-11-08 (mas recientes primero) ===
+Total filas mostradas: 144
+  2026-11-08 23:50:00 | viento=7.2 m/s | dir=162 | pot=304.9 kW | rpm=11.5 | temp=30.8 C | estado=ok
+  2026-11-08 23:40:00 | viento=6.1 m/s | dir=164 | pot=122.6 kW | rpm=10.5 | temp=25.8 C | estado=ok
+  2026-11-08 23:30:00 | viento=7.3 m/s | dir=162 | pot=327.2 kW | rpm=11.6 | temp=26.9 C | estado=ok
+  2026-11-08 23:20:00 | viento=6.2 m/s | dir=166 | pot=134.8 kW | rpm=10.6 | temp=26.3 C | estado=ok
+  2026-11-08 23:10:00 | viento=6.9 m/s | dir=169 | pot=244.1 kW | rpm=11.2 | temp=28.6 C | estado=ok
+  2026-11-08 23:00:00 | viento=7.1 m/s | dir=161 | pot=283.6 kW | rpm=11.4 | temp=28.5 C | estado=ok
+  2026-11-08 22:50:00 | viento=7.0 m/s | dir=153 | pot=263.4 kW | rpm=11.3 | temp=27.7 C | estado=ok
+  2026-11-08 22:40:00 | viento=7.0 m/s | dir=156 | pot=263.4 kW | rpm=11.3 | temp=26.6 C | estado=ok
+  2026-11-08 22:30:00 | viento=8.2 m/s | dir=156 | pot=578.6 kW | rpm=12.4 | temp=33.1 C | estado=ok
+  2026-11-08 22:20:00 | viento=8.2 m/s | dir=149 | pot=578.6 kW | rpm=12.4 | temp=32.8 C | estado=ok
+  2026-11-08 22:10:00 | viento=6.9 m/s | dir=135 | pot=244.1 kW | rpm=11.2 | temp=31.2 C | estado=ok
+  2026-11-08 22:00:00 | viento=7.1 m/s | dir=144 | pot=283.6 kW | rpm=11.4 | temp=29.9 C | estado=ok
+  2026-11-08 21:50:00 | viento=6.1 m/s | dir=145 | pot=122.6 kW | rpm=10.5 | temp=28.5 C | estado=ok
+  2026-11-08 21:40:00 | viento=6.6 m/s | dir=137 | pot=192.0 kW | rpm=10.9 | temp=28.4 C | estado=ok
+  2026-11-08 21:30:00 | viento=7.5 m/s | dir=135 | pot=375.0 kW | rpm=11.8 | temp=30.0 C | estado=ok
+  2026-11-08 21:20:00 | viento=6.9 m/s | dir=150 | pot=244.1 kW | rpm=11.2 | temp=28.1 C | estado=ok
+  2026-11-08 21:10:00 | viento=7.7 m/s | dir=138 | pot=427.3 kW | rpm=11.9 | temp=30.2 C | estado=ok
+  2026-11-08 21:00:00 | viento=6.7 m/s | dir=133 | pot=208.4 kW | rpm=11.0 | temp=26.1 C | estado=ok
+  2026-11-08 20:50:00 | viento=6.6 m/s | dir=145 | pot=192.0 kW | rpm=10.9 | temp=28.3 C | estado=ok
+  2026-11-08 20:40:00 | viento=5.5 m/s | dir=153 | pot=64.3 kW | rpm=9.9 | temp=24.8 C | estado=ok
+  2026-11-08 20:30:00 | viento=6.1 m/s | dir=156 | pot=122.6 kW | rpm=10.5 | temp=27.4 C | estado=ok
+  2026-11-08 20:20:00 | viento=6.8 m/s | dir=161 | pot=225.8 kW | rpm=11.1 | temp=25.9 C | estado=ok
+  2026-11-08 20:10:00 | viento=7.6 m/s | dir=155 | pot=400.6 kW | rpm=11.8 | temp=28.3 C | estado=ok
+  2026-11-08 20:00:00 | viento=6.8 m/s | dir=137 | pot=225.8 kW | rpm=11.1 | temp=28.5 C | estado=ok
+  2026-11-08 19:50:00 | viento=7.5 m/s | dir=138 | pot=375.0 kW | rpm=11.8 | temp=31.2 C | estado=ok
+  2026-11-08 19:40:00 | viento=6.7 m/s | dir=142 | pot=208.4 kW | rpm=11.0 | temp=24.9 C | estado=ok
+  2026-11-08 19:30:00 | viento=7.0 m/s | dir=147 | pot=263.4 kW | rpm=11.3 | temp=26.6 C | estado=ok
+  2026-11-08 19:20:00 | viento=5.1 m/s | dir=131 | pot=38.1 kW | rpm=9.6 | temp=25.3 C | estado=ok
+  2026-11-08 19:10:00 | viento=5.8 m/s | dir=142 | pot=90.3 kW | rpm=10.2 | temp=24.3 C | estado=ok
+  2026-11-08 19:00:00 | viento=5.7 m/s | dir=129 | pot=81.0 kW | rpm=10.1 | temp=25.0 C | estado=ok
+  2026-11-08 18:50:00 | viento=6.7 m/s | dir=129 | pot=208.4 kW | rpm=11.0 | temp=27.2 C | estado=ok
+  2026-11-08 18:40:00 | viento=6.0 m/s | dir=132 | pot=111.1 kW | rpm=10.4 | temp=29.5 C | estado=ok
+  2026-11-08 18:30:00 | viento=6.4 m/s | dir=152 | pot=161.7 kW | rpm=10.8 | temp=28.8 C | estado=ok
+  2026-11-08 18:20:00 | viento=5.8 m/s | dir=151 | pot=90.3 kW | rpm=10.2 | temp=24.6 C | estado=ok
+  2026-11-08 18:10:00 | viento=5.8 m/s | dir=151 | pot=90.3 kW | rpm=10.2 | temp=28.3 C | estado=ok
+  2026-11-08 18:00:00 | viento=5.9 m/s | dir=151 | pot=100.4 kW | rpm=10.3 | temp=26.2 C | estado=ok
+  2026-11-08 17:50:00 | viento=7.0 m/s | dir=146 | pot=263.4 kW | rpm=11.3 | temp=28.5 C | estado=ok
+  2026-11-08 17:40:00 | viento=7.2 m/s | dir=146 | pot=304.9 kW | rpm=11.5 | temp=90.0 C | estado=alarma
+  2026-11-08 17:30:00 | viento=7.5 m/s | dir=155 | pot=375.0 kW | rpm=11.8 | temp=30.3 C | estado=ok
+  2026-11-08 17:20:00 | viento=6.2 m/s | dir=153 | pot=134.8 kW | rpm=10.6 | temp=25.8 C | estado=ok
+  2026-11-08 17:10:00 | viento=7.4 m/s | dir=156 | pot=350.6 kW | rpm=11.7 | temp=26.9 C | estado=ok
+  2026-11-08 17:00:00 | viento=8.0 m/s | dir=163 | pot=514.4 kW | rpm=12.2 | temp=33.2 C | estado=ok
+  2026-11-08 16:50:00 | viento=7.3 m/s | dir=151 | pot=327.2 kW | rpm=11.6 | temp=29.3 C | estado=ok
+  2026-11-08 16:40:00 | viento=7.2 m/s | dir=167 | pot=304.9 kW | rpm=11.5 | temp=30.5 C | estado=ok
+  2026-11-08 16:30:00 | viento=7.1 m/s | dir=155 | pot=283.6 kW | rpm=11.4 | temp=26.7 C | estado=ok
+  2026-11-08 16:20:00 | viento=7.4 m/s | dir=156 | pot=350.6 kW | rpm=11.7 | temp=32.5 C | estado=ok
+  2026-11-08 16:10:00 | viento=7.7 m/s | dir=167 | pot=427.3 kW | rpm=11.9 | temp=30.7 C | estado=ok
+  2026-11-08 16:00:00 | viento=7.2 m/s | dir=161 | pot=304.9 kW | rpm=11.5 | temp=31.3 C | estado=ok
+  2026-11-08 15:50:00 | viento=7.0 m/s | dir=151 | pot=263.4 kW | rpm=11.3 | temp=27.8 C | estado=ok
+  2026-11-08 15:40:00 | viento=7.7 m/s | dir=149 | pot=427.3 kW | rpm=11.9 | temp=88.4 C | estado=alarma
+  2026-11-08 15:30:00 | viento=8.7 m/s | dir=148 | pot=762.1 kW | rpm=12.8 | temp=32.7 C | estado=ok
+  2026-11-08 15:20:00 | viento=8.2 m/s | dir=150 | pot=578.6 kW | rpm=12.4 | temp=31.8 C | estado=ok
+  2026-11-08 15:10:00 | viento=8.5 m/s | dir=157 | pot=684.7 kW | rpm=12.7 | temp=34.0 C | estado=ok
+  2026-11-08 15:00:00 | viento=8.6 m/s | dir=159 | pot=722.7 kW | rpm=12.7 | temp=34.7 C | estado=ok
+  2026-11-08 14:50:00 | viento=8.7 m/s | dir=167 | pot=762.1 kW | rpm=12.8 | temp=33.1 C | estado=ok
+  2026-11-08 14:40:00 | viento=9.6 m/s | dir=159 | pot=1183.1 kW | rpm=13.6 | temp=39.1 C | estado=ok
+  2026-11-08 14:30:00 | viento=9.2 m/s | dir=183 | pot=980.8 kW | rpm=13.3 | temp=37.2 C | estado=ok
+  2026-11-08 14:20:00 | viento=9.4 m/s | dir=177 | pot=1078.8 kW | rpm=13.5 | temp=40.6 C | estado=ok
+  2026-11-08 14:10:00 | viento=10.0 m/s | dir=178 | pot=1411.5 kW | rpm=14.0 | temp=44.0 C | estado=ok
+  2026-11-08 14:00:00 | viento=9.4 m/s | dir=175 | pot=1078.8 kW | rpm=13.5 | temp=39.8 C | estado=ok
+  2026-11-08 13:50:00 | viento=8.7 m/s | dir=171 | pot=762.1 kW | rpm=12.8 | temp=32.2 C | estado=ok
+  2026-11-08 13:40:00 | viento=10.6 m/s | dir=171 | pot=1806.5 kW | rpm=14.5 | temp=52.1 C | estado=ok
+  2026-11-08 13:30:00 | viento=10.8 m/s | dir=185 | pot=1952.9 kW | rpm=14.7 | temp=52.3 C | estado=ok
+  2026-11-08 13:20:00 | viento=9.6 m/s | dir=171 | pot=1183.1 kW | rpm=13.6 | temp=39.8 C | estado=ok
+  2026-11-08 13:10:00 | viento=11.3 m/s | dir=186 | pot=2353.0 kW | rpm=15.2 | temp=56.2 C | estado=ok
+  2026-11-08 13:00:00 | viento=9.8 m/s | dir=180 | pot=1294.0 kW | rpm=13.8 | temp=43.5 C | estado=ok
+  2026-11-08 12:50:00 | viento=11.1 m/s | dir=169 | pot=2187.0 kW | rpm=15.0 | temp=56.6 C | estado=ok
+  2026-11-08 12:40:00 | viento=10.9 m/s | dir=177 | pot=2029.0 kW | rpm=14.8 | temp=53.2 C | estado=ok
+  2026-11-08 12:30:00 | viento=10.1 m/s | dir=173 | pot=1472.9 kW | rpm=14.1 | temp=44.3 C | estado=ok
+  2026-11-08 12:20:00 | viento=10.1 m/s | dir=188 | pot=1472.9 kW | rpm=14.1 | temp=46.1 C | estado=ok
+  2026-11-08 12:10:00 | viento=10.4 m/s | dir=186 | pot=1667.6 kW | rpm=14.4 | temp=44.5 C | estado=ok
+  2026-11-08 12:00:00 | viento=8.8 m/s | dir=163 | pot=802.9 kW | rpm=12.9 | temp=35.5 C | estado=ok
+  2026-11-08 11:50:00 | viento=9.9 m/s | dir=180 | pot=1351.9 kW | rpm=13.9 | temp=44.4 C | estado=ok
+  2026-11-08 11:40:00 | viento=10.4 m/s | dir=173 | pot=1667.6 kW | rpm=14.4 | temp=46.8 C | estado=ok
+  2026-11-08 11:30:00 | viento=9.2 m/s | dir=179 | pot=980.8 kW | rpm=13.3 | temp=35.9 C | estado=ok
+  2026-11-08 11:20:00 | viento=10.3 m/s | dir=176 | pot=1600.9 kW | rpm=14.3 | temp=44.9 C | estado=ok
+  2026-11-08 11:10:00 | viento=10.6 m/s | dir=166 | pot=1806.5 kW | rpm=14.5 | temp=47.1 C | estado=ok
+  2026-11-08 11:00:00 | viento=11.0 m/s | dir=178 | pot=2107.0 kW | rpm=14.9 | temp=54.9 C | estado=ok
+  2026-11-08 10:50:00 | viento=10.5 m/s | dir=171 | pot=1736.1 kW | rpm=14.5 | temp=47.6 C | estado=ok
+  2026-11-08 10:40:00 | viento=12.1 m/s | dir=176 | pot=2958.2 kW | rpm=15.9 | temp=63.8 C | estado=ok
+  2026-11-08 10:30:00 | viento=10.3 m/s | dir=182 | pot=1600.9 kW | rpm=14.3 | temp=48.0 C | estado=ok
+  2026-11-08 10:20:00 | viento=11.9 m/s | dir=182 | pot=2901.1 kW | rpm=15.7 | temp=62.5 C | estado=ok
+  2026-11-08 10:10:00 | viento=12.2 m/s | dir=171 | pot=2974.5 kW | rpm=16.0 | temp=61.8 C | estado=ok
+  2026-11-08 10:00:00 | viento=11.8 m/s | dir=176 | pot=2804.4 kW | rpm=15.6 | temp=64.4 C | estado=ok
+  2026-11-08 09:50:00 | viento=11.6 m/s | dir=177 | pot=2617.5 kW | rpm=15.4 | temp=58.4 C | estado=ok
+  2026-11-08 09:40:00 | viento=11.4 m/s | dir=174 | pot=2439.1 kW | rpm=15.3 | temp=55.3 C | estado=ok
+  2026-11-08 09:30:00 | viento=11.9 m/s | dir=179 | pot=2901.1 kW | rpm=15.7 | temp=64.6 C | estado=ok
+  2026-11-08 09:20:00 | viento=13.0 m/s | dir=178 | pot=2961.7 kW | rpm=16 | temp=65.3 C | estado=ok
+  2026-11-08 09:10:00 | viento=13.0 m/s | dir=177 | pot=2997.9 kW | rpm=16 | temp=62.4 C | estado=ok
+  2026-11-08 09:00:00 | viento=12.5 m/s | dir=176 | pot=2950.2 kW | rpm=16 | temp=66.6 C | estado=ok
+  2026-11-08 08:50:00 | viento=12.1 m/s | dir=169 | pot=2996.8 kW | rpm=15.9 | temp=65.7 C | estado=ok
+  2026-11-08 08:40:00 | viento=13.3 m/s | dir=162 | pot=2960.6 kW | rpm=16 | temp=63.4 C | estado=ok
+  2026-11-08 08:30:00 | viento=12.4 m/s | dir=177 | pot=2983.6 kW | rpm=16 | temp=67.1 C | estado=ok
+  2026-11-08 08:20:00 | viento=13.3 m/s | dir=186 | pot=2969.6 kW | rpm=16 | temp=64.4 C | estado=ok
+  2026-11-08 08:10:00 | viento=12.8 m/s | dir=182 | pot=2997.8 kW | rpm=16 | temp=64.7 C | estado=ok
+  2026-11-08 08:00:00 | viento=13.7 m/s | dir=181 | pot=2971.1 kW | rpm=16 | temp=63.8 C | estado=ok
+  2026-11-08 07:50:00 | viento=15.0 m/s | dir=166 | pot=2962.0 kW | rpm=16 | temp=61.7 C | estado=ok
+  2026-11-08 07:40:00 | viento=14.9 m/s | dir=159 | pot=2979.9 kW | rpm=16 | temp=64.5 C | estado=ok
+  2026-11-08 07:30:00 | viento=15.0 m/s | dir=159 | pot=2989.6 kW | rpm=16 | temp=63.1 C | estado=ok
+  2026-11-08 07:20:00 | viento=14.2 m/s | dir=163 | pot=2953.4 kW | rpm=16 | temp=66.9 C | estado=ok
+  2026-11-08 07:10:00 | viento=14.9 m/s | dir=173 | pot=2955.7 kW | rpm=16 | temp=64.6 C | estado=ok
+  2026-11-08 07:00:00 | viento=13.9 m/s | dir=182 | pot=2956.1 kW | rpm=16 | temp=62.4 C | estado=ok
+  2026-11-08 06:50:00 | viento=13.4 m/s | dir=159 | pot=2983.8 kW | rpm=16 | temp=64.9 C | estado=ok
+  2026-11-08 06:40:00 | viento=14.0 m/s | dir=174 | pot=2985.4 kW | rpm=16 | temp=67.3 C | estado=ok
+  2026-11-08 06:30:00 | viento=13.5 m/s | dir=156 | pot=2994.3 kW | rpm=16 | temp=67.4 C | estado=ok
+  2026-11-08 06:20:00 | viento=13.7 m/s | dir=169 | pot=2992.0 kW | rpm=16 | temp=65.0 C | estado=ok
+  2026-11-08 06:10:00 | viento=12.2 m/s | dir=160 | pot=2978.7 kW | rpm=16.0 | temp=66.9 C | estado=ok
+  2026-11-08 06:00:00 | viento=11.7 m/s | dir=159 | pot=2709.9 kW | rpm=15.5 | temp=58.5 C | estado=ok
+  2026-11-08 05:50:00 | viento=12.3 m/s | dir=167 | pot=2961.9 kW | rpm=16 | temp=62.4 C | estado=ok
+  2026-11-08 05:40:00 | viento=13.1 m/s | dir=169 | pot=2960.7 kW | rpm=16 | temp=67.0 C | estado=ok
+  2026-11-08 05:30:00 | viento=12.2 m/s | dir=151 | pot=2990.6 kW | rpm=16.0 | temp=67.1 C | estado=ok
+  2026-11-08 05:20:00 | viento=13.5 m/s | dir=154 | pot=2964.7 kW | rpm=16 | temp=64.9 C | estado=ok
+  2026-11-08 05:10:00 | viento=12.2 m/s | dir=156 | pot=2983.4 kW | rpm=16.0 | temp=64.5 C | estado=ok
+  2026-11-08 05:00:00 | viento=12.1 m/s | dir=170 | pot=2968.0 kW | rpm=15.9 | temp=65.5 C | estado=ok
+  2026-11-08 04:50:00 | viento=13.6 m/s | dir=149 | pot=2996.4 kW | rpm=16 | temp=67.1 C | estado=ok
+  2026-11-08 04:40:00 | viento=13.1 m/s | dir=154 | pot=2960.5 kW | rpm=16 | temp=65.6 C | estado=ok
+  2026-11-08 04:30:00 | viento=12.0 m/s | dir=151 | pot=2992.7 kW | rpm=15.8 | temp=64.5 C | estado=ok
+  2026-11-08 04:20:00 | viento=12.0 m/s | dir=157 | pot=2951.3 kW | rpm=15.8 | temp=62.6 C | estado=ok
+  2026-11-08 04:10:00 | viento=10.8 m/s | dir=152 | pot=1952.9 kW | rpm=14.7 | temp=53.5 C | estado=ok
+  2026-11-08 04:00:00 | viento=12.5 m/s | dir=159 | pot=2973.5 kW | rpm=16 | temp=66.7 C | estado=ok
+  2026-11-08 03:50:00 | viento=11.4 m/s | dir=143 | pot=2439.1 kW | rpm=15.3 | temp=55.4 C | estado=ok
+  2026-11-08 03:40:00 | viento=10.9 m/s | dir=155 | pot=2029.0 kW | rpm=14.8 | temp=51.6 C | estado=ok
+  2026-11-08 03:30:00 | viento=10.9 m/s | dir=157 | pot=2029.0 kW | rpm=14.8 | temp=49.9 C | estado=ok
+  2026-11-08 03:20:00 | viento=12.0 m/s | dir=159 | pot=2971.0 kW | rpm=15.8 | temp=65.1 C | estado=ok
+  2026-11-08 03:10:00 | viento=10.9 m/s | dir=138 | pot=2029.0 kW | rpm=14.8 | temp=52.9 C | estado=ok
+  2026-11-08 03:00:00 | viento=12.6 m/s | dir=139 | pot=2955.3 kW | rpm=16 | temp=65.0 C | estado=ok
+  2026-11-08 02:50:00 | viento=13.1 m/s | dir=143 | pot=2999.4 kW | rpm=16 | temp=63.6 C | estado=ok
+  2026-11-08 02:40:00 | viento=12.3 m/s | dir=157 | pot=2959.7 kW | rpm=16 | temp=63.6 C | estado=ok
+  2026-11-08 02:30:00 | viento=11.7 m/s | dir=158 | pot=2709.9 kW | rpm=15.5 | temp=64.0 C | estado=ok
+  2026-11-08 02:20:00 | viento=12.7 m/s | dir=160 | pot=2992.3 kW | rpm=16 | temp=67.3 C | estado=ok
+  2026-11-08 02:10:00 | viento=10.7 m/s | dir=150 | pot=1878.7 kW | rpm=14.6 | temp=48.5 C | estado=ok
+  2026-11-08 02:00:00 | viento=10.5 m/s | dir=144 | pot=1736.1 kW | rpm=14.5 | temp=50.2 C | estado=ok
+  2026-11-08 01:50:00 | viento=11.2 m/s | dir=163 | pot=2269.0 kW | rpm=15.1 | temp=52.4 C | estado=ok
+  2026-11-08 01:40:00 | viento=10.6 m/s | dir=169 | pot=1806.5 kW | rpm=14.5 | temp=49.3 C | estado=ok
+  2026-11-08 01:30:00 | viento=10.3 m/s | dir=154 | pot=1600.9 kW | rpm=14.3 | temp=45.4 C | estado=ok
+  2026-11-08 01:20:00 | viento=10.7 m/s | dir=157 | pot=1878.7 kW | rpm=14.6 | temp=47.1 C | estado=ok
+  2026-11-08 01:10:00 | viento=10.9 m/s | dir=164 | pot=2029.0 kW | rpm=14.8 | temp=49.6 C | estado=ok
+  2026-11-08 01:00:00 | viento=10.9 m/s | dir=170 | pot=2029.0 kW | rpm=14.8 | temp=53.2 C | estado=ok
+  2026-11-08 00:50:00 | viento=10.8 m/s | dir=179 | pot=1952.9 kW | rpm=14.7 | temp=50.0 C | estado=ok
+  2026-11-08 00:40:00 | viento=12.0 m/s | dir=173 | pot=2954.0 kW | rpm=15.8 | temp=62.0 C | estado=ok
+  2026-11-08 00:30:00 | viento=10.0 m/s | dir=177 | pot=1411.5 kW | rpm=14.0 | temp=46.8 C | estado=ok
+  2026-11-08 00:20:00 | viento=11.0 m/s | dir=168 | pot=2107.0 kW | rpm=14.9 | temp=54.3 C | estado=ok
+  2026-11-08 00:10:00 | viento=9.8 m/s | dir=169 | pot=1294.0 kW | rpm=13.8 | temp=43.6 C | estado=ok
+  2026-11-08 00:00:00 | viento=10.0 m/s | dir=158 | pot=1411.5 kW | rpm=14.0 | temp=45.7 C | estado=ok
+
+=== 2. Energia producida por MB-01 el 2026-11-08 ===
+  Suma de potencias: 222914.0 kW
+  Energia total:     37152.33 kWh
+
+=== 3. Alarmas del parque MB el 2026-11-08 (orden horario) ===
+Total alarmas: 17
+  2026-11-08 00:20:00 | MB-04 | viento=11.0 m/s | pot=2107.0 kW | temp=85.4 C
+  2026-11-08 02:50:00 | MB-09 | viento=12.8 m/s | pot=2973.2 kW | temp=89.1 C
+  2026-11-08 03:40:00 | MB-11 | viento=11.1 m/s | pot=2187.0 kW | temp=82.5 C
+  2026-11-08 03:50:00 | MB-04 | viento=10.5 m/s | pot=1736.1 kW | temp=88.8 C
+  2026-11-08 04:50:00 | MB-11 | viento=12.5 m/s | pot=2977.0 kW | temp=88.7 C
+  2026-11-08 06:50:00 | MB-10 | viento=13.5 m/s | pot=2965.3 kW | temp=84.4 C
+  2026-11-08 09:30:00 | MB-02 | viento=12.1 m/s | pot=2962.6 kW | temp=84.1 C
+  2026-11-08 11:00:00 | MB-05 | viento=9.9 m/s | pot=1351.9 kW | temp=89.5 C
+  2026-11-08 12:10:00 | MB-08 | viento=10.8 m/s | pot=1952.9 kW | temp=88.8 C
+  2026-11-08 15:40:00 | MB-01 | viento=7.7 m/s | pot=427.3 kW | temp=88.4 C
+  2026-11-08 16:50:00 | MB-06 | viento=7.4 m/s | pot=350.6 kW | temp=82.7 C
+  2026-11-08 17:40:00 | MB-01 | viento=7.2 m/s | pot=304.9 kW | temp=90.0 C
+  2026-11-08 17:50:00 | MB-12 | viento=6.8 m/s | pot=225.8 kW | temp=82.5 C
+  2026-11-08 19:40:00 | MB-07 | viento=7.1 m/s | pot=283.6 kW | temp=85.8 C
+  2026-11-08 20:50:00 | MB-04 | viento=7.0 m/s | pot=263.4 kW | temp=84.1 C
+  2026-11-08 22:40:00 | MB-07 | viento=7.5 m/s | pot=375.0 kW | temp=88.7 C
+  2026-11-08 22:40:00 | MB-11 | viento=7.6 m/s | pot=400.6 kW | temp=89.2 C
+
+=== 4. Ultima lectura de cada aerogenerador del parque MB ===
+Total aerogeneradores: 12
+  MB-01 | 2026-11-08 23:50:00 | viento=7.2 m/s | pot=304.9 kW | temp=30.8 C | estado=ok
+  MB-02 | 2026-11-08 23:50:00 | viento=6.0 m/s | pot=111.1 kW | temp=28.7 C | estado=ok
+  MB-03 | 2026-11-08 23:50:00 | viento=6.9 m/s | pot=244.1 kW | temp=27.6 C | estado=ok
+  MB-04 | 2026-11-08 23:50:00 | viento=7.0 m/s | pot=263.4 kW | temp=25.5 C | estado=ok
+  MB-05 | 2026-11-08 23:50:00 | viento=6.6 m/s | pot=192.0 kW | temp=28.0 C | estado=ok
+  MB-06 | 2026-11-08 23:50:00 | viento=7.2 m/s | pot=304.9 kW | temp=31.8 C | estado=ok
+  MB-07 | 2026-11-08 23:50:00 | viento=7.1 m/s | pot=283.6 kW | temp=26.8 C | estado=ok
+  MB-08 | 2026-11-08 23:50:00 | viento=6.6 m/s | pot=192.0 kW | temp=26.6 C | estado=ok
+  MB-09 | 2026-11-08 23:50:00 | viento=6.7 m/s | pot=208.4 kW | temp=26.0 C | estado=ok
+  MB-10 | 2026-11-08 23:50:00 | viento=6.0 m/s | pot=111.1 kW | temp=25.5 C | estado=ok
+  MB-11 | 2026-11-08 23:50:00 | viento=7.1 m/s | pot=283.6 kW | temp=27.6 C | estado=ok
+  MB-12 | 2026-11-08 23:50:00 | viento=7.1 m/s | pot=283.6 kW | temp=27.2 C | estado=ok
