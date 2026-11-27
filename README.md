@@ -72,6 +72,7 @@ Cómo cumple las reglas:
 
 Antes de guardar, el script **comprueba el contrato** (rangos, 144 lecturas por aerogenerador y día, sin duplicados, parados con 0 kW y 0 rpm). Si algo falla, no guarda nada y muestra el error.
 
+
 ## Modelo de datos (4.1)
 
 Esquema completo en [`cql/02_tablas.cql`](cql/02_tablas.cql). Se crea después del keyspace:
@@ -172,6 +173,20 @@ CQL no tiene `NOT NULL` ni `CHECK`: que los campos sean obligatorios y estén en
 - Por cada lectura del CSV: `INSERT` en `lecturas_por_aeroxerador_dia`, `energia_por_aeroxerador_dia` y `ultima_lectura_por_parque` (esta con `USING TIMESTAMP`), y en `alarmas_por_parque_dia` solo si `estado == 'alarma'`.
 - Los decimales se pasan como `decimal.Decimal(texto_del_csv)` (no `float`) para que se guarden exactos.
 - `data_hora` se trata como UTC: `datetime.strptime(s, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)`; `dia` es su `.date()`; el `USING TIMESTAMP` es `int(data_hora.timestamp() * 1_000_000)`.
+
+## Carga de datos y consultas (4.2)
+
+Una vez creadas las tablas (`cql/02_tablas.cql`) y generado `lecturas.csv`, cargar las lecturas en las cuatro tablas de Cassandra (inserción concurrente con sentencias preparadas):
+
+    docker exec app python src/carga.py --archivo lecturas.csv
+
+Ejecutar las cuatro consultas para un aerogenerador y un día concretos:
+
+    docker exec app python src/consultas.py --aeroxerador MB-01 --dia 2026-11-01
+
+Por defecto la consulta 1 imprime las 144 filas del día para que la comparación de archivos (`diff`) de la fase de crecimiento compruebe el 100 % de los datos. Para acortar la salida en pantalla se puede usar `--limite`:
+
+    docker exec app python src/consultas.py --aeroxerador MB-01 --dia 2026-11-01 --limite 10
 
 ## Niveles de consistencia y pruebas de fallo (4.3)
 
